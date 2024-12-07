@@ -15,6 +15,7 @@ DEBUG = bool(int(os.getenv('DEBUG', '0')))
 HOSTNAME = socket.gethostname()
 DNS_UPDATE_INTERVAL_SECONDS = int(os.getenv('DNS_UPDATE_INTERVAL_SECONDS', '3600'))
 PREFERRED_CLIENT_IDENTIFIER = os.getenv('PREFERRED_CLIENT_IDENTIFIER', HOSTNAME)
+DESTINATION = os.getenv('DESTINATION', '')
 
 
 if runtime_options.debug is True:
@@ -40,6 +41,9 @@ if DNS_UPDATE_INTERVAL_SECONDS != 3600:
 
 logger.info('DNS Updates every {} second with the client identifier set to  "{}"'.format(DNS_UPDATE_INTERVAL_SECONDS, PREFERRED_CLIENT_IDENTIFIER))
 logger.debug('Debug logging is enabled')
+
+if runtime_options.destination == '' and len(DESTINATION) > 0:
+    runtime_options.destination = DESTINATION
 
 if len(runtime_options.extra_ip_addresses) > 0:
     for ip_address in runtime_options.extra_ip_addresses:

@@ -14,9 +14,9 @@
             // "args": [
             //     "${command:pickArgs}"
             // ],
-            "args": [
-                "--dest=dummy"
-            ],
+            // "args": [
+            //     "--dest=dummy"
+            // ],
             // "env": {
             //     "PYTHONPATH": "client/agent/src"
             // },

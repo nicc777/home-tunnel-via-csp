@@ -61,7 +61,7 @@ parser.add_argument(
     type=str,
     dest='destination',
     default='',
-    required=True
+    required=False
 )
 
 args = parser.parse_args()
