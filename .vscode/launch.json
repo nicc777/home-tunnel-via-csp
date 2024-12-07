@@ -1,0 +1,41 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: CLIENTR-AGENT",
+            "type": "debugpy",
+            "request": "launch",
+            // "program": "cumulus_tunnel_agent/agent.py",
+            "module": "cumulus_tunnel_agent.agent",
+            "console": "integratedTerminal",
+            "args": [
+                "${command:pickArgs}"
+            ],
+            // "env": {
+            //     "PYTHONPATH": "client/agent/src"
+            // },
+            "cwd": "${workspaceFolder}/client/agent/src",
+            "justMyCode": true
+        },
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "${command:pickArgs}"
+            ]
+        },
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
