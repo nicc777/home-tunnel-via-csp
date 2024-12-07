@@ -1,5 +1,5 @@
-import copy
 import argparse
+import socket
 
 parser = argparse.ArgumentParser(
     prog='cumulus_tunnel_agent',
@@ -17,6 +17,7 @@ class RuntimeOptions:
         self.run_as_service = True
         self.destination = ''
         self.nat_check = True
+        self.agent_name = socket.gethostname()
 
 
 runtime_options = RuntimeOptions()
@@ -72,6 +73,16 @@ parser.add_argument(
     default='',
     required=False
 )
+parser.add_argument(
+    '--identifier',
+    help='I name for this agent (and system)',
+    action='store',
+    # default=list(),
+    type=str,
+    dest='agent_identifier',
+    default='',
+    required=False
+)
 
 
 args = parser.parse_args()
@@ -90,6 +101,8 @@ if args.run_once is True:
     runtime_options.run_as_service = False
 if len(args.destination) > 0:
     runtime_options.destination = '{}'.format(args.destination)
+if len(args.agent_identifier) > 0:
+    runtime_options.agent_name = '{}'.format(args.agent_identifier)
 
 runtime_options.nat_check = not args.skip_nat_check
 

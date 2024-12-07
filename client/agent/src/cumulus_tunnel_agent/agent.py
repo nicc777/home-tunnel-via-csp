@@ -1,9 +1,9 @@
 import os
 import sys
 import logging
-import socket
 import time
 import json
+import socket
 import requests
 
 from cumulus_tunnel_agent.args import runtime_options
@@ -16,7 +16,7 @@ import traceback
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
 HOSTNAME = socket.gethostname()
 DNS_UPDATE_INTERVAL_SECONDS = int(os.getenv('DNS_UPDATE_INTERVAL_SECONDS', '3600'))
-PREFERRED_CLIENT_IDENTIFIER = os.getenv('PREFERRED_CLIENT_IDENTIFIER', HOSTNAME)
+PREFERRED_CLIENT_IDENTIFIER = os.getenv('PREFERRED_CLIENT_IDENTIFIER', runtime_options.agent_name)
 DESTINATION = os.getenv('DESTINATION', '')
 
 
@@ -41,7 +41,13 @@ if DNS_UPDATE_INTERVAL_SECONDS != 3600:
         runtime_options.update_interval_seconds = DNS_UPDATE_INTERVAL_SECONDS
 
 
-logger.info('DNS Updates every {} second with the client identifier set to  "{}"'.format(DNS_UPDATE_INTERVAL_SECONDS, PREFERRED_CLIENT_IDENTIFIER))
+if runtime_options.agent_name == HOSTNAME:
+    logger.debug('Checking if we can override the agent identifier...')
+    if PREFERRED_CLIENT_IDENTIFIER != runtime_options.agent_name:
+        runtime_options.agent_name = PREFERRED_CLIENT_IDENTIFIER
+
+
+logger.info('DNS Updates every {} second with the client identifier set to  "{}"'.format(DNS_UPDATE_INTERVAL_SECONDS, runtime_options.agent_name))
 logger.debug('Debug logging is enabled')
 
 if runtime_options.destination == '' and len(DESTINATION) > 0:
@@ -51,7 +57,7 @@ if len(runtime_options.extra_ip_addresses) > 0:
     for ip_address in runtime_options.extra_ip_addresses:
         logger.info('Adding extra IP address to firewall rule: {}'.format(ip_address))
 else:
-    logger.info('Only the detected public IP address will be added')
+    logger.info('No extra IP addresses will be added')
 
 
 if len(runtime_options.destination) == 0:
@@ -109,6 +115,12 @@ def get_public_ip_addresses()->dict:
     if len(ipv6) > 0:
         public_ip_addresses['ipv6'] = ipv6
     return public_ip_addresses
+
+
+def get_current_public_ip_address_file()->str:
+    data = dict()
+
+    return data
 
 
 def agent_main():
