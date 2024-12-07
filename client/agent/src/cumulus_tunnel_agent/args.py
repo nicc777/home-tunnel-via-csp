@@ -16,6 +16,7 @@ class RuntimeOptions:
         self.extra_ip_addresses = list()
         self.run_as_service = True
         self.destination = ''
+        self.nat_check = True
 
 
 runtime_options = RuntimeOptions()
@@ -33,6 +34,14 @@ parser.add_argument(
     default=False,
     required=False,
     dest='run_once'
+)
+parser.add_argument(
+    '--skip-nat-check',
+    help='Skip the detection of this hosts NAT addresses (public IP addresses).',
+    action='store_true',
+    default=False,
+    required=False,
+    dest='skip_nat_check'
 )
 parser.add_argument(
     '--update-interval-seconds',
@@ -64,6 +73,7 @@ parser.add_argument(
     required=False
 )
 
+
 args = parser.parse_args()
 
 runtime_options.debug = args.verbose
@@ -81,6 +91,7 @@ if args.run_once is True:
 if len(args.destination) > 0:
     runtime_options.destination = '{}'.format(args.destination)
 
+runtime_options.nat_check = not args.skip_nat_check
 
 
 
