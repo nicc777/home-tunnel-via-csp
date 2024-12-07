@@ -4,20 +4,18 @@ import logging
 import time
 import json
 import socket
+import traceback
+from datetime import datetime, timedelta
+
 import requests
+import boto3
+import botocore
 
 from cumulus_tunnel_agent.args import runtime_options
-
-# import copy
-import traceback
-# import boto3
 
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
 HOSTNAME = socket.gethostname()
-DNS_UPDATE_INTERVAL_SECONDS = int(os.getenv('DNS_UPDATE_INTERVAL_SECONDS', '3600'))
-PREFERRED_CLIENT_IDENTIFIER = os.getenv('PREFERRED_CLIENT_IDENTIFIER', runtime_options.agent_name)
-DESTINATION = os.getenv('DESTINATION', '')
 
 
 if runtime_options.debug is True:
@@ -36,22 +34,8 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-if DNS_UPDATE_INTERVAL_SECONDS != 3600:
-    if runtime_options.update_interval_seconds == 3600:
-        runtime_options.update_interval_seconds = DNS_UPDATE_INTERVAL_SECONDS
-
-
-if runtime_options.agent_name == HOSTNAME:
-    logger.debug('Checking if we can override the agent identifier...')
-    if PREFERRED_CLIENT_IDENTIFIER != runtime_options.agent_name:
-        runtime_options.agent_name = PREFERRED_CLIENT_IDENTIFIER
-
-
-logger.info('DNS Updates every {} second with the client identifier set to  "{}"'.format(DNS_UPDATE_INTERVAL_SECONDS, runtime_options.agent_name))
+logger.info('DNS Updates every {} second with the client identifier set to  "{}"'.format(runtime_options.update_interval_seconds, runtime_options.agent_name))
 logger.debug('Debug logging is enabled')
-
-if runtime_options.destination == '' and len(DESTINATION) > 0:
-    runtime_options.destination = DESTINATION
 
 if len(runtime_options.extra_ip_addresses) > 0:
     for ip_address in runtime_options.extra_ip_addresses:
@@ -117,10 +101,61 @@ def get_public_ip_addresses()->dict:
     return public_ip_addresses
 
 
-def get_current_public_ip_address_file()->str:
+def get_s3_file_as_dict(key: str)->str:
     data = dict()
-
+    try:
+        bucket_name = runtime_options.destination
+        if bucket_name.startswith('s://'):
+            bucket_name.replace('s3://', '')
+        s3 = boto3.resource('s3')
+        obj = s3.Object(bucket_name, key)
+        raw = obj.get()['Body'].read().decode('utf-8')
+        logger.debug('get_current_public_ip_address_file(): raw: {}'.format(raw))
+        data = json.loads(raw)
+    except botocore.exceptions.ClientError as error:
+        if error.response['Error']['Code'] == 'NoSuchKey':
+            logger.error('Key "{}" does not exist'.format(key))
+        else:
+            logger.error('EXCEPTION: {}'.format(traceback.format_exc()))
     return data
+
+
+def write_s3_data(key: str, data: dict):
+    try:
+        now = datetime.now()
+        future_datetime = now + timedelta(hours=24)
+        bucket_name = runtime_options.destination
+        if bucket_name.startswith('s://'):
+            bucket_name.replace('s3://', '')
+        client = boto3.client('s3')
+        response = client.put_object(
+            Body=json.dumps(data).encode('utf-8'),
+            Bucket=bucket_name,
+            Expires=future_datetime,
+            Key=key
+        )
+        logger.debug('write_s3_data(): Wrote key "{}" - response: {}'.format(key, json.dumps(response)))
+    except:
+        logger.error('EXCEPTION: {}'.format(traceback.format_exc()))
+
+
+def delete_s3_key(key: str):
+    try:
+        bucket_name = runtime_options.destination
+        if bucket_name.startswith('s://'):
+            bucket_name.replace('s3://', '')
+        client = boto3.client('s3')
+        response = client.delete_object(
+            Bucket=bucket_name,
+            Key=key
+        )
+        logger.debug('delete_s3_key(): Deleted key "{}" - response: {}'.format(key, json.dumps(response)))
+    except botocore.exceptions.ClientError as error:
+        if error.response['Error']['Code'] == 'NoSuchKey':
+            logger.error('Key "{}" does not exist'.format(key))
+        else:
+            logger.error('EXCEPTION: {}'.format(traceback.format_exc()))
+
 
 
 def agent_main():
@@ -131,6 +166,23 @@ def agent_main():
 
         public_ip_addresses = get_public_ip_addresses()
         logger.info('public_ip_addresses: {}'.format(json.dumps(public_ip_addresses)))
+
+        current_extra_ip_addresses_for_agent_at_destination = get_s3_file_as_dict(key=runtime_options.get_agent_extra_ip_addresses_key_name())
+        logger.debug('agent_main(): current_extra_ip_addresses_for_agent_at_destination: {}'.format(json.dumps(current_extra_ip_addresses_for_agent_at_destination)))
+
+        write_s3_data(
+            key=runtime_options.get_agent_key_name(),
+            data=public_ip_addresses
+        )
+
+        if len(runtime_options.extra_ip_addresses) > 0:
+            write_s3_data(
+                key=runtime_options.get_agent_extra_ip_addresses_key_name(),
+                data=runtime_options.extra_ip_addresses
+            )
+        else:
+            if len(current_extra_ip_addresses_for_agent_at_destination) > 0:
+                delete_s3_key(key=runtime_options.get_agent_extra_ip_addresses_key_name())
 
         if runtime_options.run_as_service is False:
             logger.info('Main loop DONE')

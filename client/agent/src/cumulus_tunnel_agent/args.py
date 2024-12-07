@@ -19,6 +19,12 @@ class RuntimeOptions:
         self.nat_check = True
         self.agent_name = socket.gethostname()
 
+    def get_agent_key_name(self)->str:
+        return '{}.json'.format(self.agent_name)
+    
+    def get_agent_extra_ip_addresses_key_name(self)->str:
+        return 'extra-ip-addresses-{}.json'.format(self.agent_name)
+
 
 runtime_options = RuntimeOptions()
 
