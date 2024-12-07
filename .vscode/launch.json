@@ -11,9 +11,12 @@
             // "program": "cumulus_tunnel_agent/agent.py",
             "module": "cumulus_tunnel_agent.agent",
             "console": "integratedTerminal",
-            "args": [
-                "${command:pickArgs}"
-            ],
+            // "args": [
+            //     "${command:pickArgs}"
+            // ],
+            // "args": [
+            //     "--ips=0.0,1.1"
+            // ],
             // "env": {
             //     "PYTHONPATH": "client/agent/src"
             // },
