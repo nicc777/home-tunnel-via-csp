@@ -1,4 +1,4 @@
-# Home Tunnel via Cloud Service Provider
+# Home Tunnel via Cloud Service Provider (cumulus-tunnel)
 
 Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secure-tunnels) tunneling using a Public Cloud like AWS.
 
@@ -46,4 +46,8 @@ The price is less than the cheapest `ngrok` option above free-tier (around USD18
 
 > [!CAUTION]
 > These are cost estimates and many factors may influence the final cost. Use the [AWS Pricing Calculator](https://calculator.aws/#/) to adjust the numbers to your own needs.
+
+# Documentation
+
+Still limited, but you can start to look at the [development notes](./DEV_NOTES.md) that will be updated as progress is made until proper documentation can be created.
 
