@@ -48,6 +48,11 @@ else:
     logger.info('Only the detected public IP address will be added')
 
 
+if len(runtime_options.destination) == 0:
+    raise Exception('The destination must have a value')
+logger.info('Destination: {}'.format(runtime_options.destination))
+
+
 def agent_main():
     logger.info('starting')
     do_loop = True

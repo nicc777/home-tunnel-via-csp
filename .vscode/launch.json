@@ -14,9 +14,9 @@
             // "args": [
             //     "${command:pickArgs}"
             // ],
-            // "args": [
-            //     "--ips=0.0,1.1"
-            // ],
+            "args": [
+                "--dest=dummy"
+            ],
             // "env": {
             //     "PYTHONPATH": "client/agent/src"
             // },

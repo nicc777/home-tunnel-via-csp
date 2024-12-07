@@ -15,6 +15,7 @@ class RuntimeOptions:
         self.update_interval_seconds = 86400
         self.extra_ip_addresses = list()
         self.run_as_service = True
+        self.destination = ''
 
 
 runtime_options = RuntimeOptions()
@@ -52,6 +53,16 @@ parser.add_argument(
     default='',
     required=False
 )
+parser.add_argument(
+    '--dest',
+    help='The destination. Only S3 is supported and therefore whatever value is set here will for now be assumed to be an S3 bucket',
+    action='store',
+    # default=list(),
+    type=str,
+    dest='destination',
+    default='',
+    required=True
+)
 
 args = parser.parse_args()
 
@@ -67,6 +78,8 @@ except:
     pass
 if args.run_once is True:
     runtime_options.run_as_service = False
+if len(args.destination) > 0:
+    runtime_options.destination = '{}'.format(args.destination)
 
 
 
