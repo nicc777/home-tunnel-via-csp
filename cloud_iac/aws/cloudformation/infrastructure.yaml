@@ -1,0 +1,107 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: "IaC for https://github.com/nicc777/home-tunnel-via-csp"
+
+#######################################################################################################################
+###
+###     PARAMETERS
+###
+#######################################################################################################################
+
+Parameters:
+
+  CumulusTunnelBucketNameParam:
+    Type: 'String'
+    MinLength: 1
+
+#######################################################################################################################
+###
+###     RESOURCES
+###
+#######################################################################################################################
+
+Resources:
+
+  ########################################
+  ###
+  ### S3 BUCKET
+  ###
+  ########################################
+
+  CumulusTunnelBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref CumulusTunnelBucketNameParam
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+        - Id: 'ShortTermRule'
+          Status: Enabled
+          ExpirationInDays: 1
+
+  CumulusTunnelBucketPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: 'Policy for reading CumulusTunnelBucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: 'GeneralAccess'
+          Effect: 'Allow'
+          Action:
+          - "s3:GetBucketLocation"
+          - "s3:PutObject"
+          - "s3:GetObject"
+          - "s3:GetObjectAttributes"
+          - "s3:GetObjectTagging"
+          - "s3:PutObjectTagging"
+          - "s3:DeleteObject"
+          - "s3:GetObjectVersion"
+          - "s3:ListBucket"
+          Resource:
+          - !GetAtt CumulusTunnelBucket.Arn
+          - !Sub '${CumulusTunnelBucket.Arn}/*'
+        - Sid: 'DenyHttpAccess'
+          Action:
+          - 's3:*'
+          Effect: Deny
+          Principal: '*'
+          Resource:
+          - !GetAtt CumulusTunnelBucket.Arn
+          - !Sub '${CumulusTunnelBucket.Arn}/*'
+          Condition:
+            Bool:
+              'aws:SecureTransport': false
+
+#######################################################################################################################
+###
+###     OUTPUTS
+###
+#######################################################################################################################
+
+Outputs:
+
+  CumulusTunnelBucketName:
+    Description: 'Name of CumulusTunnelBucket'
+    Value: !Ref CumulusTunnelBucketNameParam
+    Export:
+      Name: CumulusTunnelBucketName
+
+  CumulusTunnelBucketArn:
+    Description: 'ARN of CumulusTunnelBucket'
+    Value: !GetAtt CumulusTunnelBucket.Arn
+    Export:
+      Name: CumulusTunnelBucketArn
+
+  CumulusTunnelBucketPolicyArn:
+    Value: !Ref CumulusTunnelBucketPolicy
+    Export:
+      Name: 'CumulusTunnelBucketPolicyArn'
+
+  
