@@ -1,0 +1,102 @@
+{
+	"Name": "My Estimate",
+	"Total Cost": {
+		"monthly": "10.83",
+		"upfront": "0.06",
+		"12 months": "130.02"
+	},
+	"Metadata": {
+		"Currency": "USD",
+		"Locale": "en_US",
+		"Created On": "12/7/2024",
+		"Legal Disclaimer": "AWS Pricing Calculator provides only an estimate of your AWS fees and doesn't include any taxes that might apply. Your actual fees depend on a variety of factors, including your actual usage of AWS services.",
+		"Share Url": "https://calculator.aws/#/estimate?id=d343d35578eca8068461ef1eca408de1d7b0acd5"
+	},
+	"Groups": {
+		"Services": [
+			{
+				"Service Name": "S3 Standard",
+				"Region": "Europe (Frankfurt)",
+				"Status": "",
+				"Service Cost": {
+					"monthly": "0.04",
+					"upfront": "0.06",
+					"12 months": "0.54"
+				},
+				"Properties": {
+					"S3 Standard storage": "1 GB per month",
+					"S3 Standard Average Object Size": "100 KB",
+					"PUT, COPY, POST, LIST requests to S3 Standard": "1000",
+					"GET, SELECT, and all other requests from S3 Standard": "1000",
+					"Data returned by S3 Select": "1 GB per month",
+					"Data scanned by S3 Select": "2 GB per month"
+				}
+			},
+			{
+				"Service Name": "Data Transfer",
+				"Region": "Europe (Frankfurt)",
+				"Status": "",
+				"Service Cost": {
+					"monthly": "0.18",
+					"upfront": "0.00",
+					"12 months": "2.16"
+				},
+				"Properties": {
+					"DT Inbound: Internet": "1 TB per month",
+					"DT Outbound: Internet": "2 GB per month"
+				}
+			},
+			{
+				"Service Name": "Amazon EC2 ",
+				"Region": "Europe (Frankfurt)",
+				"Status": "",
+				"Service Cost": {
+					"monthly": "6.96",
+					"upfront": "0.00",
+					"12 months": "83.57"
+				},
+				"Properties": {
+					"Tenancy": "Shared Instances",
+					"Operating system": "Linux",
+					"Workload": "Consistent, Number of instances: 1",
+					"Advance EC2 instance": "t4g.nano",
+					"Pricing strategy": "On-Demand Utilization: 100 %Utilized/Month",
+					"Enable monitoring": "disabled",
+					"EBS Storage amount": "8 GB",
+					"DT Inbound: Internet": "1 TB per month",
+					"DT Outbound: Internet": "30 GB per month",
+					"DT Intra-Region:": "0 TB per month"
+				}
+			},
+			{
+				"Service Name": "AWS Lambda",
+				"Region": "Europe (Frankfurt)",
+				"Status": "",
+				"Service Cost": {
+					"monthly": "0.00",
+					"upfront": "0.00",
+					"12 months": "0.00"
+				},
+				"Properties": {
+					"Architecture": "Arm",
+					"Invoke Mode": "Buffered",
+					"Amount of ephemeral storage allocated": "512 MB",
+					"Number of requests": "10000 per month"
+				}
+			},
+			{
+				"Service Name": "Public IPv4 Address",
+				"Region": "Europe (Frankfurt)",
+				"Status": "",
+				"Service Cost": {
+					"monthly": "3.65",
+					"upfront": "0.00",
+					"12 months": "43.80"
+				},
+				"Properties": {
+					"Number of In-use public IPv4 addresses": "1"
+				}
+			}
+		]
+	}
+}
