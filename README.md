@@ -19,6 +19,7 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 * [ ] Creating a Virtual Machine Instance where the tunnel will terminate (known as the relay host)
 * [ ] Track the user systems NAT address to the Internet for maintaining firewall rules to the relay machine (this may be a laptop from where a person may want to access the private system)
+  * [x] Agent to collect and upload public IP addresses
 * [ ] Create reverse port tunneling from the private system to a local port
 * [ ] Enable authentication of the reverse HTTP proxy
 * [ ] Enable custom header requirements and other filters to allow/restrict access
