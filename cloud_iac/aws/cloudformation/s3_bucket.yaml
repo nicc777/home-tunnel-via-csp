@@ -15,6 +15,42 @@ Parameters:
     Type: 'String'
     MinLength: 1
 
+  ArtifactBucketNameParam:
+    Type: 'String'
+    MinLength: 1
+
+  LambdaFunctionCreatedS3KeyParam:
+    Type: 'String'
+    MinLength: 1
+    Default: "handler_s3_object_created.zip"
+
+  LambdaFunctionDeletedS3KeyParam:
+    Type: 'String'
+    MinLength: 1
+    Default: "handler_s3_object_deleted.zip"
+
+  LambdaFunctionExpiredS3KeyParam:
+    Type: 'String'
+    MinLength: 1
+    Default: "handler_s3_object_expired.zip"
+
+  SubnetId1Param:
+    Type: 'String'
+    MinLength: 1
+
+  SubnetId2Param:
+    Type: 'String'
+    MinLength: 1
+
+  SubnetId3Param:
+    Type: 'String'
+    MinLength: 1
+
+  DebugParam:
+    Type: 'String'
+    Default: "0"
+    Description: "To enable DEBUG logging for AWS Lambda function, set this value to 1"
+
 #######################################################################################################################
 ###
 ###     RESOURCES
@@ -149,6 +185,7 @@ Resources:
   ### SNS RESOURCES 
   ###
   ########################################
+
   CumulusTunnelS3ObjCreatedTopic:
     Type: AWS::SNS::Topic
     DependsOn: CumulusTunnelLambdaRole          # it first create IAM-role than the Lambda-function
@@ -210,12 +247,12 @@ Resources:
       - !Ref CumulusTunnelS3ObjDeletedTopic
       - !Ref CumulusTunnelS3ObjExpiredTopic
 
-  CumulusTunnelLambdaFunctionPermission:
-    DependsOn: CumulusTunnelLambdaFunction
+  S3ObjCreatedLambdaFunctionPermission:
+    DependsOn: S3ObjCreatedLambdaFunction
     Type: 'AWS::Lambda::Permission'
     Properties:
       Action: 'lambda:InvokeFunction'
-      FunctionName: !GetAtt CumulusTunnelLambdaFunction.Arn
+      FunctionName: !GetAtt S3ObjCreatedLambdaFunction.Arn
       Principal: sns.amazonaws.com
 
 
@@ -225,48 +262,140 @@ Resources:
   ###
   ########################################
 
-  CumulusTunnelLambdaFunctionLogGroup:
+  S3ObjCreatedLambdaLogGroup:
     Type: AWS::Logs::LogGroup
-    DependsOn: CumulusTunnelLambdaFunction
+    DependsOn: S3ObjCreatedLambdaFunction
     Properties:
       LogGroupName:
         Fn::Join:
         - ''
         - - "/aws/lambda/"
-          - Ref: CumulusTunnelLambdaFunction
+          - Ref: S3ObjCreatedLambdaFunction
       RetentionInDays: 7
 
-  CumulusTunnelLambdaFunction:
+  S3ObjCreatedLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket:
-          Ref: XXX  # Requires Parameter
-        S3Key:
-          Ref: XXX  # Requires Parameter
-      Description: "XXX"
-      Handler: "XXX.handler"
+        S3Bucket: !Ref ArtifactBucketNameParam
+        S3Key: !Ref LambdaFunctionCreatedS3KeyParam
+      Description: "Lambda function to process created files"
+      Handler: "handler_s3_object_created.handler"
       MemorySize: 128
       PackageType: Zip
       Role: !ImportValue CumulusTunnelLambdaRoleArn
       VpcConfig:
         SecurityGroupIds: XXX # Requires Parameter or Resource...
         SubnetIds:
-        - XXX # Requires Parameter
-        - XXX # Requires Parameter
-        - XXX # Requires Parameter
+        - !Ref SubnetId1Param
+        - !Ref SubnetId2Param
+        - !Ref SubnetId3Param
       Environment:
         Variables:
           DEBUG: !Ref DebugParam  # Requires Parameter
       Runtime: python3.12
       Timeout: 300
 
-  SnsTopicSubscription:
+  S3ObjCreatedSnsTopicSubscription:
     Type: AWS::SNS::Subscription
     Properties:
-      Endpoint: !GetAtt CumulusTunnelLambdaFunction.Arn
+      Endpoint: !GetAtt S3ObjCreatedLambdaFunction.Arn
       Protocol: 'lambda'
-      TopicArn: XXX # REFERENCE the TOPIC ARN - !GetAtt TopicResourceName.TopicArn
+      TopicArn: !GetAtt CumulusTunnelS3ObjCreatedTopic.TopicArn
+
+  ########################################
+  ###
+  ### LAMBDA FUNCTION :: OBJECT DELETED
+  ###
+  ########################################
+
+  S3ObjDeletedLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: S3ObjDeletedLambdaFunction
+    Properties:
+      LogGroupName:
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: S3ObjDeletedLambdaFunction
+      RetentionInDays: 7
+
+  S3ObjDeletedLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucketNameParam
+        S3Key: !Ref LambdaFunctionDeletedS3KeyParam
+      Description: "Lambda function to process deleted files"
+      Handler: "handler_s3_object_deleted.handler"
+      MemorySize: 128
+      PackageType: Zip
+      Role: !ImportValue CumulusTunnelLambdaRoleArn
+      VpcConfig:
+        SecurityGroupIds: XXX # Requires Parameter or Resource...
+        SubnetIds:
+        - !Ref SubnetId1Param
+        - !Ref SubnetId2Param
+        - !Ref SubnetId3Param
+      Environment:
+        Variables:
+          DEBUG: !Ref DebugParam  # Requires Parameter
+      Runtime: python3.12
+      Timeout: 300
+
+  S3ObjDeletedSnsTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt S3ObjDeletedLambdaFunction.Arn
+      Protocol: 'lambda'
+      TopicArn: !GetAtt CumulusTunnelS3ObjDeletedTopic.TopicArn
+
+  ########################################
+  ###
+  ### LAMBDA FUNCTION :: OBJECT EXPIRED
+  ###
+  ########################################
+
+  S3ObjExpiredLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: S3ObjExpiredLambdaFunction
+    Properties:
+      LogGroupName:
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: S3ObjExpiredLambdaFunction
+      RetentionInDays: 7
+
+  S3ObjExpiredLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucketNameParam
+        S3Key: !Ref LambdaFunctionExpiredS3KeyParam
+      Description: "Lambda function to process expired files"
+      Handler: "handler_s3_object_expired.handler"
+      MemorySize: 128
+      PackageType: Zip
+      Role: !ImportValue CumulusTunnelLambdaRoleArn
+      VpcConfig:
+        SecurityGroupIds: XXX # Requires Parameter or Resource...
+        SubnetIds:
+        - !Ref SubnetId1Param
+        - !Ref SubnetId2Param
+        - !Ref SubnetId3Param
+      Environment:
+        Variables:
+          DEBUG: !Ref DebugParam  # Requires Parameter
+      Runtime: python3.12
+      Timeout: 300
+
+  S3ObjExpiredSnsTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt S3ObjExpiredLambdaFunction.Arn
+      Protocol: 'lambda'
+      TopicArn: !GetAtt CumulusTunnelS3ObjExpiredTopic.TopicArn
 
 
 #######################################################################################################################
