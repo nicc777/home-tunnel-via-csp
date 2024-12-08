@@ -44,6 +44,14 @@ Resources:
         - Id: 'ShortTermRule'
           Status: Enabled
           ExpirationInDays: 1
+      NotificationConfiguration:
+        TopicConfigurations:
+        - Topic: 'arn:aws:sns:us-east-1:123456789012:TestTopic'
+          Event: 's3:ObjectCreated:*'
+        - Topic: 'arn:aws:sns:us-east-1:123456789012:TestTopic'
+          Event: 's3:ObjectRemoved:*'
+        - Topic: 'arn:aws:sns:us-east-1:123456789012:TestTopic'
+          Event: 's3:LifecycleExpiration:*'
 
   CumulusTunnelBucketPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
