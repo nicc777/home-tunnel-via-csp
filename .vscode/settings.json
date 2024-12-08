@@ -4,6 +4,7 @@
         "errorfactory",
         "gethostname",
         "levelname",
+        "pyhton",
         "socat"
     ]
 }
