@@ -87,6 +87,188 @@ Resources:
             Bool:
               'aws:SecureTransport': false
 
+  ########################################
+  ###
+  ### LAMBDA - BASE 
+  ###
+  ########################################
+
+  CumulusTunnelLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: MattermostAlertSenderLambdaFunctionPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          # logging
+          - Effect: Allow
+            Action:
+            - "logs:CreateLogGroup"
+            - "logs:CreateLogStream"
+            - "logs:PutLogEvents"
+            Resource: arn:aws:logs:*:*:*
+          # networkinterface
+          - Effect: Allow
+            Action:
+            - "ec2:DescribeNetworkinterfaces"
+            - "ec2:DeleteNetworkinterface"
+            - "ec2:Describe*"
+            - "ec2:DescribeVpcs"
+            - "ec2:DescribeSubnets"
+            - "ec2:CreateNetworkinterface"
+            Resource: "*"
+          # snstopic
+          - Effect: Allow
+            Action:
+            - "sns:CreateTopic"
+            - "sns:DeleteTopic"
+            - "sns:Subscribe"
+            - "sns:Unsubscribe"
+            - "sns:Publish"
+            Resource:
+              !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MessagingTopic"
+          # s3
+          - Effect: Allow
+            Action:
+            - "s3:GetObject"
+            Resource: "*"
+
+  ########################################
+  ###
+  ### SNS RESOURCES 
+  ###
+  ########################################
+  CumulusTunnelS3ObjCreatedTopic:
+    Type: AWS::SNS::Topic
+    DependsOn: CumulusTunnelLambdaRole          # it first create IAM-role than the Lambda-function
+    Properties:
+      TopicName: "s3-object-created"
+
+  CumulusTunnelS3ObjDeletedTopic:
+    Type: AWS::SNS::Topic
+    DependsOn: CumulusTunnelLambdaRole          # it first create IAM-role than the Lambda-function
+    Properties:
+      TopicName: "s3-object-deleted"
+
+  CumulusTunnelS3ObjExpiredTopic:
+    Type: AWS::SNS::Topic
+    DependsOn: CumulusTunnelLambdaRole          # it first create IAM-role than the Lambda-function
+    Properties:
+      TopicName: "s3-object-expired"
+
+  CumulusTunnelSnsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Sid: CumulusTunnelPolicy01
+          Effect: Allow
+          Principal:
+            Service: s3.amazonaws.com
+          Action: sns:Publish
+          Resource: !Ref CumulusTunnelS3ObjCreatedTopic
+          Condition:
+            ArnLike:
+              aws:SourceArn: !GetAtt CumulusTunnelBucket.Arn
+            StringEquals:
+              aws:SourceAccount: !Ref AWS::AccountId
+        - Sid: CumulusTunnelPolicy01
+          Effect: Allow
+          Principal:
+            Service: s3.amazonaws.com
+          Action: sns:Publish
+          Resource: !Ref CumulusTunnelS3ObjDeletedTopic
+          Condition:
+            ArnLike:
+              aws:SourceArn: !GetAtt CumulusTunnelBucket.Arn
+            StringEquals:
+              aws:SourceAccount: !Ref AWS::AccountId
+        - Sid: CumulusTunnelPolicy01
+          Effect: Allow
+          Principal:
+            Service: s3.amazonaws.com
+          Action: sns:Publish
+          Resource: !Ref CumulusTunnelS3ObjExpiredTopic
+          Condition:
+            ArnLike:
+              aws:SourceArn: !GetAtt CumulusTunnelBucket.Arn
+            StringEquals:
+              aws:SourceAccount: !Ref AWS::AccountId
+      Topics:
+      - !Ref CumulusTunnelS3ObjCreatedTopic
+      - !Ref CumulusTunnelS3ObjDeletedTopic
+      - !Ref CumulusTunnelS3ObjExpiredTopic
+
+  CumulusTunnelLambdaFunctionPermission:
+    DependsOn: CumulusTunnelLambdaFunction
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt CumulusTunnelLambdaFunction.Arn
+      Principal: sns.amazonaws.com
+
+
+  ########################################
+  ###
+  ### LAMBDA FUNCTION :: OBJECT CREATED
+  ###
+  ########################################
+
+  CumulusTunnelLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: CumulusTunnelLambdaFunction
+    Properties:
+      LogGroupName:
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: CumulusTunnelLambdaFunction
+      RetentionInDays: 7
+
+  CumulusTunnelLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: XXX  # Requires Parameter
+        S3Key:
+          Ref: XXX  # Requires Parameter
+      Description: "XXX"
+      Handler: "XXX.handler"
+      MemorySize: 128
+      PackageType: Zip
+      Role: !ImportValue CumulusTunnelLambdaRoleArn
+      VpcConfig:
+        SecurityGroupIds: XXX # Requires Parameter or Resource...
+        SubnetIds:
+        - XXX # Requires Parameter
+        - XXX # Requires Parameter
+        - XXX # Requires Parameter
+      Environment:
+        Variables:
+          DEBUG: !Ref DebugParam  # Requires Parameter
+      Runtime: python3.12
+      Timeout: 300
+
+  SnsTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt CumulusTunnelLambdaFunction.Arn
+      Protocol: 'lambda'
+      TopicArn: XXX # REFERENCE the TOPIC ARN - !GetAtt TopicResourceName.TopicArn
+
+
 #######################################################################################################################
 ###
 ###     OUTPUTS
