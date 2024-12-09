@@ -72,6 +72,11 @@ Resources:
   CumulusTunnelBucket:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
+    DependsOn:
+    - CumulusTunnelS3ObjCreatedTopic
+    - CumulusTunnelS3ObjDeletedTopic
+    - CumulusTunnelS3ObjExpiredTopic
+    - CumulusTunnelSnsPolicy
     Properties:
       BucketName: !Ref CumulusTunnelBucketNameParam
       PublicAccessBlockConfiguration:
@@ -231,7 +236,6 @@ Resources:
 
   CumulusTunnelSnsPolicy:
     Type: AWS::SNS::TopicPolicy
-    DependsOn: CumulusTunnelBucket
     Properties:
       PolicyDocument:
         Statement:
@@ -243,7 +247,10 @@ Resources:
           Resource: !Ref CumulusTunnelS3ObjCreatedTopic
           Condition:
             ArnLike:
-              aws:SourceArn: !GetAtt CumulusTunnelBucket.Arn
+              aws:SourceArn: 
+                Fn::Sub:
+                - "arn:aws:s3:::$BucketName"
+                - BucketName: !Ref CumulusTunnelBucketNameParam
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
         - Sid: CumulusTunnelPolicy01
@@ -254,7 +261,10 @@ Resources:
           Resource: !Ref CumulusTunnelS3ObjDeletedTopic
           Condition:
             ArnLike:
-              aws:SourceArn: !GetAtt CumulusTunnelBucket.Arn
+              aws:SourceArn: 
+                Fn::Sub:
+                - "arn:aws:s3:::$BucketName"
+                - BucketName: !Ref CumulusTunnelBucketNameParam
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
         - Sid: CumulusTunnelPolicy01
@@ -265,7 +275,10 @@ Resources:
           Resource: !Ref CumulusTunnelS3ObjExpiredTopic
           Condition:
             ArnLike:
-              aws:SourceArn: !GetAtt CumulusTunnelBucket.Arn
+              aws:SourceArn: 
+                Fn::Sub:
+                - "arn:aws:s3:::$BucketName"
+                - BucketName: !Ref CumulusTunnelBucketNameParam
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
       Topics:
