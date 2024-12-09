@@ -21,3 +21,67 @@ It will determine the NAT IP address (public IP address) of the client and push 
 Additional IP addresses can be added to accommodate systems where the agent can not be installed, for example a mobile phone or tablet.
 
 The files created in the cloud will have a limited life span (default 1 day) after which the files will be deleted. When the files are deleted, the firewall rules are deleted as well, via a Lambda trigger.
+
+# CloudFormation
+
+First, create the S3, SNS and Lambda resources:
+
+```shell
+# Create the parameters for the template 
+# ADD YOUR OWN VALUES...
+rm -vf /tmp/event_resources-parameters.json
+cat <<EOF >> /tmp/event_resources-parameters.json
+[
+    {
+        "ParameterKey": "CumulusTunnelBucketNameParam",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "ArtifactBucketNameParam",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "LambdaFunctionCreatedS3KeyParam",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "LambdaFunctionDeletedS3KeyParam",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "LambdaFunctionExpiredS3KeyParam",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "VpcId1Param",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "SubnetId1Param",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "SubnetId2Param",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "SubnetId3Param",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "DebugParam",
+        "ParameterValue": "1"
+    }
+]
+EOF
+
+PARAMETERS_FILE="file:///tmp/event_resources-parameters.json" && \
+TEMPLATE_BODY="file://$PWD/cloud_iac/aws/cloudformation/event_resources.yaml" && \
+aws cloudformation create-stack \
+--stack-name cumulus-tunnel-event-resources \
+--template-body $TEMPLATE_BODY \
+--parameters $PARAMETERS_FILE \
+--capabilities CAPABILITY_NAMED_IAM \
+--profile $PROFILE \
+--region $REGION
+```

@@ -86,11 +86,11 @@ Resources:
           ExpirationInDays: 1
       NotificationConfiguration:
         TopicConfigurations:
-        - Topic: 'arn:aws:sns:us-east-1:123456789012:TestTopic'
+        - Topic: !Ref CumulusTunnelS3ObjCreatedTopic
           Event: 's3:ObjectCreated:*'
-        - Topic: 'arn:aws:sns:us-east-1:123456789012:TestTopic'
+        - Topic: !Ref CumulusTunnelS3ObjDeletedTopic
           Event: 's3:ObjectRemoved:*'
-        - Topic: 'arn:aws:sns:us-east-1:123456789012:TestTopic'
+        - Topic: !Ref CumulusTunnelS3ObjExpiredTopic
           Event: 's3:LifecycleExpiration:*'
 
   CumulusTunnelBucketPolicy:
@@ -231,6 +231,7 @@ Resources:
 
   CumulusTunnelSnsPolicy:
     Type: AWS::SNS::TopicPolicy
+    DependsOn: CumulusTunnelBucket
     Properties:
       PolicyDocument:
         Statement:
@@ -308,7 +309,7 @@ Resources:
       Handler: "handler_s3_object_created.handler"
       MemorySize: 128
       PackageType: Zip
-      Role: !ImportValue CumulusTunnelLambdaRoleArn
+      Role: !GetAtt CumulusTunnelLambdaRole.Arn
       VpcConfig:
         SecurityGroupIds: !Ref LambdaFunctionSecurityGroup
         SubnetIds:
@@ -355,7 +356,7 @@ Resources:
       Handler: "handler_s3_object_deleted.handler"
       MemorySize: 128
       PackageType: Zip
-      Role: !ImportValue CumulusTunnelLambdaRoleArn
+      Role: !GetAtt CumulusTunnelLambdaRole.Arn
       VpcConfig:
         SecurityGroupIds: !Ref LambdaFunctionSecurityGroup
         SubnetIds:
@@ -402,7 +403,7 @@ Resources:
       Handler: "handler_s3_object_expired.handler"
       MemorySize: 128
       PackageType: Zip
-      Role: !ImportValue CumulusTunnelLambdaRoleArn
+      Role: !GetAtt CumulusTunnelLambdaRole.Arn
       VpcConfig:
         SecurityGroupIds: !Ref LambdaFunctionSecurityGroup
         SubnetIds:
