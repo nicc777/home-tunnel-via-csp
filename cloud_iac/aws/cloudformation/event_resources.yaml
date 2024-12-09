@@ -502,6 +502,20 @@ Resources:
       VpcId: !Ref VpcId1Param
       GroupName: cumulus-tunnel-instance-sg
 
+  TunnelInstanceSgIpv4Egress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      CidrIp: 0.0.0.0/0
+      GroupId: !GetAtt TunnelInstanceSecurityGroup.GroupId
+      IpProtocol: "-1"
+
+  TunnelInstanceSgIpv6Egress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      CidrIpv6: "::/0"
+      GroupId: !GetAtt TunnelInstanceSecurityGroup.GroupId
+      IpProtocol: "-1"
+
 #######################################################################################################################
 ###
 ###     OUTPUTS
