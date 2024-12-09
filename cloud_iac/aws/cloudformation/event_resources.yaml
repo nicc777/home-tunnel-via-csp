@@ -404,7 +404,7 @@ Resources:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: !Ref LambdaFunctionDeletedS3KeyParam
       Description: "Lambda function to process deleted files"
-      Handler: "handler_s3_object_deleted.handler"
+      Handler: "handler_s3_object_delete.handler"
       MemorySize: 128
       PackageType: Zip
       Role: !GetAtt CumulusTunnelLambdaRole.Arn
