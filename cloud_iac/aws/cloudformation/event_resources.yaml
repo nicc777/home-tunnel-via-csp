@@ -196,16 +196,6 @@ Resources:
             - "ec2:DescribeSubnets"
             - "ec2:CreateNetworkinterface"
             Resource: "*"
-          # snstopic
-          - Effect: Allow
-            Action:
-            - "sns:CreateTopic"
-            - "sns:DeleteTopic"
-            - "sns:Subscribe"
-            - "sns:Unsubscribe"
-            - "sns:Publish"
-            Resource:
-              !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MessagingTopic"
           # s3
           - Effect: Allow
             Action:
@@ -329,6 +319,22 @@ Resources:
     Properties:
       Action: 'lambda:InvokeFunction'
       FunctionName: !GetAtt S3ObjCreatedLambdaFunction.Arn
+      Principal: sns.amazonaws.com
+
+  S3ObjDeletedLambdaFunctionPermission:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn: S3ObjDeletedLambdaFunction
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt S3ObjDeletedLambdaFunction.Arn
+      Principal: sns.amazonaws.com
+
+  S3ObjExpiredLambdaFunctionPermission:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn: S3ObjExpiredLambdaFunction
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt S3ObjExpiredLambdaFunction.Arn
       Principal: sns.amazonaws.com
 
 
