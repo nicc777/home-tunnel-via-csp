@@ -4,7 +4,10 @@
         "errorfactory",
         "gethostname",
         "levelname",
+        "Networkinterface",
+        "Networkinterfaces",
         "pyhton",
+        "snstopic",
         "socat"
     ]
 }
