@@ -85,12 +85,16 @@ cat <<EOF >> /tmp/event_resources-parameters.json
     {
         "ParameterKey": "DebugParam",
         "ParameterValue": "1"
+    },
+    {
+        "ParameterKey": "CumulusTunnelAmiIdParam",
+        "ParameterValue": "..."
     }
 ]
 EOF
 
 PARAMETERS_FILE="file:///tmp/event_resources-parameters.json" && \
-TEMPLATE_BODY="file://$PWD/cloud_iac/aws/cloudformation/event_resources.yaml" && \
+TEMPLATE_BODY="file://$PWD/cloud_iac/aws/cloudformation/tunnel_resources.yaml" && \
 aws cloudformation create-stack \
 --stack-name cumulus-tunnel-event-resources \
 --template-body $TEMPLATE_BODY \
