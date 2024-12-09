@@ -163,6 +163,7 @@ Resources:
 
   CumulusTunnelLambdaRole:
     Type: AWS::IAM::Role
+    DependsOn: TunnelInstanceSecurityGroup
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -357,6 +358,7 @@ Resources:
 
   S3ObjCreatedLambdaFunction:
     Type: AWS::Lambda::Function
+    DependsOn: TunnelInstanceSecurityGroup
     Properties:
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
@@ -375,7 +377,8 @@ Resources:
         - !Ref SubnetId3Param
       Environment:
         Variables:
-          DEBUG: !Ref DebugParam  # Requires Parameter
+          DEBUG: !Ref DebugParam
+          TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
       Runtime: python3.12
       Timeout: 300
 
@@ -405,6 +408,7 @@ Resources:
 
   S3ObjDeletedLambdaFunction:
     Type: AWS::Lambda::Function
+    DependsOn: TunnelInstanceSecurityGroup
     Properties:
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
@@ -423,7 +427,8 @@ Resources:
         - !Ref SubnetId3Param
       Environment:
         Variables:
-          DEBUG: !Ref DebugParam  # Requires Parameter
+          DEBUG: !Ref DebugParam
+          TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
       Runtime: python3.12
       Timeout: 300
 
@@ -453,6 +458,7 @@ Resources:
 
   S3ObjExpiredLambdaFunction:
     Type: AWS::Lambda::Function
+    DependsOn: TunnelInstanceSecurityGroup
     Properties:
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
@@ -471,7 +477,8 @@ Resources:
         - !Ref SubnetId3Param
       Environment:
         Variables:
-          DEBUG: !Ref DebugParam  # Requires Parameter
+          DEBUG: !Ref DebugParam
+          TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
       Runtime: python3.12
       Timeout: 300
 
@@ -482,6 +489,18 @@ Resources:
       Protocol: 'lambda'
       TopicArn: !GetAtt CumulusTunnelS3ObjExpiredTopic.TopicArn
 
+  ########################################
+  ###
+  ### SECURITY GROUP (FIREWALL)
+  ###
+  ########################################
+
+  TunnelInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the EC2 Instance hosting the tunnels
+      VpcId: !Ref VpcId1Param
+      GroupName: cumulus-tunnel-instance-sg
 
 #######################################################################################################################
 ###
