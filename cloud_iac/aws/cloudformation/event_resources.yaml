@@ -128,7 +128,6 @@ Resources:
           Action:
           - 's3:*'
           Effect: Deny
-          Principal: '*'
           Resource:
           - !GetAtt CumulusTunnelBucket.Arn
           - Fn::Sub:
@@ -137,6 +136,24 @@ Resources:
           Condition:
             Bool:
               'aws:SecureTransport': false
+        - Sid: 'SnsPublishCreateEvent'
+          Action:
+          - 'sns:Publish'
+          Effect: Allow
+          Resource:
+          - !Ref CumulusTunnelS3ObjCreatedTopic
+        - Sid: 'SnsPublishDeleteEvent'
+          Action:
+          - 'sns:Publish'
+          Effect: Allow
+          Resource:
+          - !Ref CumulusTunnelS3ObjDeletedTopic
+        - Sid: 'SnsPublishExpireEvent'
+          Action:
+          - 'sns:Publish'
+          Effect: Allow
+          Resource:
+          - !Ref CumulusTunnelS3ObjExpiredTopic
 
   ########################################
   ###
