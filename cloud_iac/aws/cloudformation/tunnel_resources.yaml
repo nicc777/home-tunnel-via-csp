@@ -616,7 +616,7 @@ Resources:
           Action:
           - 'sts:AssumeRole'
       ManagedPolicyArns:
-        - !ImportValue CumulusTunnelSsmPolicyArn
+      - !Ref CumulusTunnelSsmPolicy
       Policies:
       - PolicyName: 'Ec2SecretsManager01'
         PolicyDocument:
