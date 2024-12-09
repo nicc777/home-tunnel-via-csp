@@ -71,7 +71,7 @@ Resources:
 
   CumulusTunnelBucket:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Properties:
       BucketName: !Ref CumulusTunnelBucketNameParam
       PublicAccessBlockConfiguration:
