@@ -25,6 +25,6 @@ logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 
 def handler(event, context):
-    logger.debug('event: {}'.format(json.dumps(event, default=str, indent=4)))
+    logger.debug('event: {}'.format(json.dumps(event, default=str)))
     return "ok"
 
