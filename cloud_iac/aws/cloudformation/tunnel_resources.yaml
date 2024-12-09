@@ -55,6 +55,11 @@ Parameters:
     Default: "0"
     Description: "To enable DEBUG logging for AWS Lambda function, set this value to 1"
 
+  CumulusTunnelAmiIdParam:
+    Type: 'String'
+    MinLength: 1
+    Description: "The AMI to use."
+
 #######################################################################################################################
 ###
 ###     RESOURCES
@@ -515,6 +520,156 @@ Resources:
       CidrIpv6: "::/0"
       GroupId: !GetAtt TunnelInstanceSecurityGroup.GroupId
       IpProtocol: "-1"
+
+  ########################################
+  ###
+  ### EC2 ACCESS VIA ECM
+  ###
+  ########################################
+
+  CumulusTunnelSsmRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Description: 'SSM Access'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: 'Allow'
+          Principal:
+            Service: 'ec2.amazonaws.com'
+          Action: 'sts:AssumeRole'
+
+  CumulusTunnelSsmPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: 'Policy for SSM'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: 'Allow'
+          Action:
+          - 'ssm:UpdateInstanceInformation'
+          - 'ssmmessages:CreateControlChannel'
+          - 'ssmmessages:CreateDataChannel'
+          - 'ssmmessages:OpenControlChannel'
+          - 'ssmmessages:OpenDataChannel'
+          Resource: '*'
+        - Effect: 'Allow'
+          Action:
+          - 's3:GetEncryptionConfiguration'
+          Resource: '*'
+      Roles:
+      - !Ref CumulusTunnelSsmRole
+
+  CumulusTunnelSsmInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+      - !Ref CumulusTunnelSsmRole
+
+  CumulusTunnelSsmSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: 'cumulus-tunnel-ssm'
+      GroupDescription: 'Allow SSM to reach AWS API'
+      VpcId: !Ref VpcId1Param
+      SecurityGroupEgress:
+        - IpProtocol: 'tcp'
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+          Description: 'Allow all to HTTPS'
+
+  ########################################
+  ###
+  ### EC2 TUNNEL INSTANCE LAUNCH TEMPLATE
+  ###
+  ########################################
+
+  CumulusTunnelAuthTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties: 
+      Description: 'The secret for tunnel reverse proxy HTTP reverse proxy'
+      GenerateSecretString: 
+        ExcludeLowercase: false
+        ExcludeNumbers: false
+        ExcludePunctuation: true
+        ExcludeUppercase: false
+        GenerateStringKey: 'password'
+        IncludeSpace: false
+        PasswordLength: 64
+        RequireEachIncludedType: true
+        SecretStringTemplate: '{"username": "cumulus"}'
+      Name: !Sub '${AWS::StackName}-tunnel-http-password'
+
+  CumulusTunnelInstanceRole1:
+    Type: 'AWS::IAM::Role'
+    DependsOn: CumulusTunnelAuthTokenSecret
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Sid: CumulusTunnelAllowStsAssumeRole
+          Effect: 'Allow'
+          Principal:
+            Service:
+            - 'ec2.amazonaws.com'
+          Action:
+          - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !ImportValue CumulusTunnelSsmPolicyArn
+      Policies:
+      - PolicyName: 'Ec2SecretsManager01'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement: 
+          - Action: 
+            - 'secretsmanager:GetSecretValue'
+            - 'secretsmanager:DescribeSecret'
+            Effect: 'Allow'
+            Resource: !Ref CumulusTunnelAuthTokenSecret
+      Path: /
+      RoleName: !Sub '${AWS::StackName}-CumulusTunnelInstanceRole1'
+
+  CumulusTunnelProfile: 
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties: 
+      Path: '/'
+      Roles: 
+      - Ref: CumulusTunnelInstanceRole1
+
+  InstanceHostLaunchTemplate:
+    Type: 'AWS::EC2::LaunchTemplate'
+    DependsOn: CumulusTunnelAuthTokenSecret
+    Properties:
+      LaunchTemplateName: !Sub '${AWS::StackName}-LaunchTemplate'
+      LaunchTemplateData:
+        BlockDeviceMappings:
+        - Ebs:
+            VolumeSize: 8
+            VolumeType: 'gp2'
+            DeleteOnTermination: True
+            Encrypted: True
+          DeviceName: '/dev/sda1'
+        ImageId: !Ref CumulusTunnelAmiIdParam
+        InstanceType: 't4g.nano'
+        IamInstanceProfile: 
+          Arn: !GetAtt CumulusTunnelProfile.Arn
+        SecurityGroupIds:
+        - !Ref CumulusTunnelSecurityGroup
+        - !Ref CumulusTunnelSsmSecurityGroup
+        MetadataOptions:
+          HttpTokens: 'required'
+        UserData: 
+          Fn::Base64:
+            Fn::Sub:
+            - |
+              MIME-Version: 1.0
+              Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+
+              --==BOUNDARY==
+              Content-Type: text/x-shellscript; charset="us-ascii"
+
+              #!/bin/bash
 
 #######################################################################################################################
 ###
