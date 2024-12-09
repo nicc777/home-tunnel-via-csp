@@ -76,7 +76,9 @@ Resources:
     - CumulusTunnelS3ObjCreatedTopic
     - CumulusTunnelS3ObjDeletedTopic
     - CumulusTunnelS3ObjExpiredTopic
-    - CumulusTunnelSnsPolicy
+    - CumulusTunnelS3ObjCreateSnsPolicy
+    - CumulusTunnelS3ObjDeleteSnsPolicy
+    - CumulusTunnelS3ObjExpireSnsPolicy
     Properties:
       BucketName: !Ref CumulusTunnelBucketNameParam
       PublicAccessBlockConfiguration:
@@ -234,7 +236,7 @@ Resources:
     Properties:
       TopicName: "s3-object-expired"
 
-  CumulusTunnelSnsPolicy:
+  CumulusTunnelS3ObjCreateSnsPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       PolicyDocument:
@@ -253,7 +255,15 @@ Resources:
                 - BucketName: !Ref CumulusTunnelBucketNameParam
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-        - Sid: CumulusTunnelPolicy02
+      Topics:
+      - !Ref CumulusTunnelS3ObjCreatedTopic
+
+  CumulusTunnelS3ObjDeleteSnsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Sid: CumulusTunnelPolicy01
           Effect: Allow
           Principal:
             Service: s3.amazonaws.com
@@ -267,7 +277,15 @@ Resources:
                 - BucketName: !Ref CumulusTunnelBucketNameParam
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-        - Sid: CumulusTunnelPolicy03
+      Topics:
+      - !Ref CumulusTunnelS3ObjDeletedTopic
+
+  CumulusTunnelS3ObjExpireSnsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Sid: CumulusTunnelPolicy01
           Effect: Allow
           Principal:
             Service: s3.amazonaws.com
@@ -282,13 +300,11 @@ Resources:
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
       Topics:
-      - !Ref CumulusTunnelS3ObjCreatedTopic
-      - !Ref CumulusTunnelS3ObjDeletedTopic
       - !Ref CumulusTunnelS3ObjExpiredTopic
 
   S3ObjCreatedLambdaFunctionPermission:
-    DependsOn: S3ObjCreatedLambdaFunction
     Type: 'AWS::Lambda::Permission'
+    DependsOn: S3ObjCreatedLambdaFunction
     Properties:
       Action: 'lambda:InvokeFunction'
       FunctionName: !GetAtt S3ObjCreatedLambdaFunction.Arn
