@@ -32,11 +32,24 @@ sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handle
 sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_delete.py -p handler_s3_object_delete
 
 sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_expired.py -p handler_s3_object_expired
+
+export ARTIFACT_BUCKET=...
 ```
 
 Upload the produced ZIP files to an S3 bucket created in the same region as where you want to deploy the CloudFormation template.
 
 You will need the ZIP file path in the output from each of the scripts above to create the appropriate parameter values.
+
+Next, copy the setup scripts that will run each time the virtual machine creating the tunnels will start-up:
+
+```shell
+aws s3 cp cloud_iac/aws/ec2_setup_scripts/cumulus-tunnel-setup.sh s3://$ARTIFACT_BUCKET/cumulus-tunnel-setup.sh
+
+aws s3 cp cloud_iac/aws/ec2_setup_scripts/additional-setup.sh s3://$ARTIFACT_BUCKET/additional-setup.sh
+```
+
+> [!NOTE]  
+> Use the `cloud_iac/aws/ec2_setup_scripts/additional-setup.sh` to add any custom stuff you need to set-up.
 
 Create the S3, SNS and Lambda resources:
 

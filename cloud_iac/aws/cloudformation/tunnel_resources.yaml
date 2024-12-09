@@ -672,7 +672,21 @@ Resources:
               #!/bin/bash
 
               echo "CumulusTunnelAuthTokenSecretArn: ${CumulusTunnelAuthTokenSecretArn}"
+              echo "ArtifactBucket: ${ArtifactBucket}"
+
+              export HTTP_PW_SECRET_ARN=${CumulusTunnelAuthTokenSecretArn}
+              export ARTIFACT_BUCKET_NAME=${ArtifactBucket}
+
+              aws cp s3://${ArtifactBucket}/cumulus-tunnel-setup.sh /tmp/cumulus-tunnel-setup.sh || true
+              aws cp s3://${ArtifactBucket}/additional-setup.sh /tmp/additional-setup.sh || true
+
+              chmod 700 /tmp/cumulus-tunnel-setup.sh || true
+              chmod 700 /tmp/additional-setup.sh || true
+
+              /tmp/cumulus-tunnel-setup.sh || true
+              /tmp/additional-setup.sh || true
             - CumulusTunnelAuthTokenSecretArn: !Ref CumulusTunnelAuthTokenSecret
+              ArtifactBucket: !Ref ArtifactBucketNameParam
 
 #######################################################################################################################
 ###
