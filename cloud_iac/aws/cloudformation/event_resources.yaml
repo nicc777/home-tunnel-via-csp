@@ -253,7 +253,7 @@ Resources:
                 - BucketName: !Ref CumulusTunnelBucketNameParam
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-        - Sid: CumulusTunnelPolicy01
+        - Sid: CumulusTunnelPolicy02
           Effect: Allow
           Principal:
             Service: s3.amazonaws.com
@@ -267,7 +267,7 @@ Resources:
                 - BucketName: !Ref CumulusTunnelBucketNameParam
             StringEquals:
               aws:SourceAccount: !Ref AWS::AccountId
-        - Sid: CumulusTunnelPolicy01
+        - Sid: CumulusTunnelPolicy03
           Effect: Allow
           Principal:
             Service: s3.amazonaws.com
