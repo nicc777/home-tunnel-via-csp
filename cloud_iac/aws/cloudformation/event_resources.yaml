@@ -311,7 +311,8 @@ Resources:
       PackageType: Zip
       Role: !GetAtt CumulusTunnelLambdaRole.Arn
       VpcConfig:
-        SecurityGroupIds: !Ref LambdaFunctionSecurityGroup
+        SecurityGroupIds:
+        - !Ref LambdaFunctionSecurityGroup
         SubnetIds:
         - !Ref SubnetId1Param
         - !Ref SubnetId2Param
@@ -358,7 +359,8 @@ Resources:
       PackageType: Zip
       Role: !GetAtt CumulusTunnelLambdaRole.Arn
       VpcConfig:
-        SecurityGroupIds: !Ref LambdaFunctionSecurityGroup
+        SecurityGroupIds:
+        - !Ref LambdaFunctionSecurityGroup
         SubnetIds:
         - !Ref SubnetId1Param
         - !Ref SubnetId2Param
@@ -405,7 +407,8 @@ Resources:
       PackageType: Zip
       Role: !GetAtt CumulusTunnelLambdaRole.Arn
       VpcConfig:
-        SecurityGroupIds: !Ref LambdaFunctionSecurityGroup
+        SecurityGroupIds:
+        - !Ref LambdaFunctionSecurityGroup
         SubnetIds:
         - !Ref SubnetId1Param
         - !Ref SubnetId2Param
