@@ -24,7 +24,21 @@ The files created in the cloud will have a limited life span (default 1 day) aft
 
 # CloudFormation
 
-First, create the S3, SNS and Lambda resources:
+Start by preparing the AWS Lambda functions (packaging):
+
+```shell
+sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_created.py -p handler_s3_object_created
+
+sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_delete.py -p handler_s3_object_delete
+
+sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_expired.py -p handler_s3_object_expired
+```
+
+Upload the produced ZIP files to an S3 bucket created in the same region as where you want to deploy the CloudFormation template.
+
+You will need the ZIP file path in the output from each of the scripts above to create the appropriate parameter values.
+
+Create the S3, SNS and Lambda resources:
 
 ```shell
 # Create the parameters for the template 
