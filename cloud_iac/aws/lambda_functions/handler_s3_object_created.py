@@ -8,10 +8,10 @@ import traceback
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
 
 # Files ending with this string will not be processed, but may be created to store state
-STATE_FILE_KEY_EXTENSION = bool(int(os.getenv('STATE_FILE_KEY', '-tunnel-state.json')))
+STATE_FILE_KEY_EXTENSION = os.getenv('STATE_FILE_KEY', '-tunnel-state.json')
 
 # The S3 bucket for storing state.
-STATE_BUCKET = bool(int(os.getenv('STATE_BUCKET', '')))
+STATE_BUCKET = os.getenv('STATE_BUCKET', '')
 
 
 logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
@@ -41,13 +41,13 @@ def get_sns_record_from_event_record(record: dict)->dict:
         logger.error('Expected the record to be of type dict - ignoring. Type is {}'.format(type(record)))
         return
     if 'EventSubscriptionArn' not in record:
-        logger.error('Record does not containe the key "EventSubscriptionArn" - ignoring')
+        logger.error('Record does not contain the key "EventSubscriptionArn" - ignoring')
         return
     if 's3-object-created' not in record['EventSubscriptionArn']:
         logger.error('Expected an S3 object created event from SNS - ignoring')
         return
     if 'Sns' not in record:
-        logger.error('Record does not containe the key "Sns" - ignoring')
+        logger.error('Record does not contain the key "Sns" - ignoring')
         return
     if isinstance(record['Sns'], dict) is False:
         logger.error('Expected the SNS record to be of type dict - ignoring. Type is {}'.format(type(record['Sns'])))
@@ -60,7 +60,7 @@ def extract_message_from_sns_record(sns: dict)->dict:
         logger.error('SNS Record cannot be NoneType- ignoring')
         return
     if 'Message' not in sns:
-        logger.error('SNS record does not containe the key "Message" - ignoring')
+        logger.error('SNS record does not contain the key "Message" - ignoring')
         return
     if isinstance(sns['Message'], str) is False:
         logger.error('Expected the SNS Message record to be of type str - ignoring. Type is {}'.format(type(sns['Message'])))
@@ -78,7 +78,7 @@ def validate_basic_records(input_data: dict, expected_key_type: list, key: str='
         logger.error('Input cannot be NoneType- ignoring')
         return False
     if key not in input_data:
-        logger.error('Input does not containe the key "{}" - ignoring'.format(key))
+        logger.error('Input does not contain the key "{}" - ignoring'.format(key))
         return False
     if input_data[key] is None:
         logger.error('Input key record is NoneType - ignoring')
@@ -89,11 +89,48 @@ def validate_basic_records(input_data: dict, expected_key_type: list, key: str='
     return True
 
 
+def extract_bucket(s3_record: dict):
+    if validate_basic_records(input_data=s3_record, key='bucket', expected_key_type=dict) is False:
+        logger.error('Failed to extract bucket')
+        return ''
+    if 'name' in s3_record['bucket']:
+        return '{}'.format(s3_record['bucket']['name'])
+    logger.error('Key "name" for bucket not found - ignoring')
+    return ''
+    
+
+def extract_key(s3_record: dict):
+    if validate_basic_records(input_data=s3_record, key='object', expected_key_type=dict) is False:
+        logger.error('Failed to extract key')
+        return ''
+    if 'key' in s3_record['object']:
+        key: str
+        key = s3_record['object']['key']
+        if key is None:
+            logger.error('OOPS: Somehow key is NoneType! - Ignoring')
+            return ''
+        if isinstance(key, str) is False:
+            logger.error('OOPS: Somehow key is not a string! - Ignoring')
+            return ''
+        if key.startswith('agent-') is False or key.endswith('.json') is False:
+            logger.warning('NOT-AN-AGENT-FILE - Ignoring')
+            return ''
+        return '{}'.format(s3_record['object']['key'])
+    logger.error('Key "key" for object not found - ignoring')
+    return ''
+
+
 def process_s3_record(record: dict):
     if validate_basic_records(input_data=record, key='s3', expected_key_type=dict) is False:
         logger.error('Failed to parse message')
         return
     s3_record = record['s3']
+    logger.debug('s3_record: {}'.format(json.dumps(s3_record, default=str)))
+    bucket = extract_bucket(s3_record=s3_record)
+    key = extract_key(s3_record=s3_record)
+    if bucket == '' or key == '':
+        return
+    logger.info('Attempting to parse s3://{}/{}'.format(bucket, key))
     # TODO - Process S3 record
 
 
