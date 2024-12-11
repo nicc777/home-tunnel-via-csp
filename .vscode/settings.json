@@ -11,5 +11,12 @@
         "pyhton",
         "snstopic",
         "socat"
+    ],
+    "yaml.customTags": [
+        "!Sub scalar",
+        "!Ref scalar",
+        "!GetAtt scaler",
+        "!GetAtt",
+        "!Sub"
     ]
 }

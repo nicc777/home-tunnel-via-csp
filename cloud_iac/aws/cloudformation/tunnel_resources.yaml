@@ -384,6 +384,7 @@ Resources:
         Variables:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
+          STATE_BUCKET: !Ref ArtifactBucketNameParam
       Runtime: python3.12
       Timeout: 300
 
@@ -434,6 +435,7 @@ Resources:
         Variables:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
+          STATE_BUCKET: !Ref ArtifactBucketNameParam
       Runtime: python3.12
       Timeout: 300
 
@@ -484,6 +486,7 @@ Resources:
         Variables:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
+          STATE_BUCKET: !Ref ArtifactBucketNameParam
       Runtime: python3.12
       Timeout: 300
 
