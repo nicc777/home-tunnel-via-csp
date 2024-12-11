@@ -627,6 +627,19 @@ Resources:
             - 'secretsmanager:DescribeSecret'
             Effect: 'Allow'
             Resource: !Ref CumulusTunnelAuthTokenSecret
+      - PolicyName: 'ArtifactBucketPolicy01'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement: 
+          - Action: 
+            - 's3:HeadObject'
+            - 's3:GetObject'
+            - 's3:ListObjectsV2'
+            - 's3:CopyObject'
+            Effect: 'Allow'
+            Resource: !Sub 
+            - 'arn:aws:s3:::${Bucket}/*'
+            - Bucket: !Ref ArtifactBucketNameParam
       Path: /
       RoleName: !Sub '${AWS::StackName}-CumulusTunnelInstanceRole1'
 
@@ -681,9 +694,14 @@ Resources:
 
               export HTTP_PW_SECRET_ARN=${CumulusTunnelAuthTokenSecretArn}
               export ARTIFACT_BUCKET_NAME=${ArtifactBucket}
+              
+              echo
+              echo "Main setup script location      : s3://${ArtifactBucket}/cumulus-tunnel-setup.sh"
+              echo "Secondary setup script location : s3://${ArtifactBucket}/additional-setup.sh"
+              echo
 
-              aws cp s3://${ArtifactBucket}/cumulus-tunnel-setup.sh /tmp/cumulus-tunnel-setup.sh || true
-              aws cp s3://${ArtifactBucket}/additional-setup.sh /tmp/additional-setup.sh || true
+              aws s3 cp s3://${ArtifactBucket}/cumulus-tunnel-setup.sh /tmp/cumulus-tunnel-setup.sh || true
+              aws s3 cp s3://${ArtifactBucket}/additional-setup.sh /tmp/additional-setup.sh || true
 
               chmod 700 /tmp/cumulus-tunnel-setup.sh || true
               chmod 700 /tmp/additional-setup.sh || true
