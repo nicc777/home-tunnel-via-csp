@@ -60,6 +60,11 @@ Parameters:
     MinLength: 1
     Description: "The AMI to use."
 
+  StateFileKeyParam:
+    Type: 'String'
+    MinLength: 1
+    Default: "cumulus-tunnel-state.json"
+
 #######################################################################################################################
 ###
 ###     RESOURCES
@@ -67,6 +72,14 @@ Parameters:
 #######################################################################################################################
 
 Resources:
+
+  TunnelInstructionQueue: 
+    Type: AWS::SQS::Queue
+    Properties: 
+      MaximumMessageSize: 102400
+      MessageRetentionPeriod: 1800
+      QueueName: "cumulus-tunnel-commands"
+      VisibilityTimeout: 180
 
   ########################################
   ###
@@ -385,6 +398,8 @@ Resources:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
           STATE_BUCKET: !Ref ArtifactBucketNameParam
+          STATE_FILE_KEY: !Ref StateFileKeyParam
+          COMMAND_QUEUE_URL: !Ref TunnelInstructionQueue
       Runtime: python3.12
       Timeout: 300
 
@@ -436,6 +451,8 @@ Resources:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
           STATE_BUCKET: !Ref ArtifactBucketNameParam
+          STATE_FILE_KEY: !Ref StateFileKeyParam
+          COMMAND_QUEUE_URL: !Ref TunnelInstructionQueue
       Runtime: python3.12
       Timeout: 300
 
@@ -487,6 +504,8 @@ Resources:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
           STATE_BUCKET: !Ref ArtifactBucketNameParam
+          STATE_FILE_KEY: !Ref StateFileKeyParam
+          COMMAND_QUEUE_URL: !Ref TunnelInstructionQueue
       Runtime: python3.12
       Timeout: 300
 
@@ -697,10 +716,15 @@ Resources:
 
               export HTTP_PW_SECRET_ARN=${CumulusTunnelAuthTokenSecretArn}
               export ARTIFACT_BUCKET_NAME=${ArtifactBucket}
+              export SQS_URL=${SqsUrlValue}
+              export STATE_BUCKET=${StateBucketValue}
+              export STATE_FILE_KEY=${StateFileValue}
               
               echo
               echo "Main setup script location      : s3://${ArtifactBucket}/cumulus-tunnel-setup.sh"
               echo "Secondary setup script location : s3://${ArtifactBucket}/additional-setup.sh"
+              echo "SQS Url                         : ${SQS_URL}"
+              echo "State File                      : s3://${STATE_BUCKET}/${STATE_FILE_KEY}"
               echo
 
               aws s3 cp s3://${ArtifactBucket}/cumulus-tunnel-setup.sh /tmp/cumulus-tunnel-setup.sh || true
@@ -713,6 +737,9 @@ Resources:
               /tmp/additional-setup.sh || true
             - CumulusTunnelAuthTokenSecretArn: !Ref CumulusTunnelAuthTokenSecret
               ArtifactBucket: !Ref ArtifactBucketNameParam
+              SqsUrlValue: !Ref TunnelInstructionQueue
+              StateBucketValue: !Ref ArtifactBucketNameParam
+              StateFileValue: !Ref StateFileKeyParam
 
 #######################################################################################################################
 ###

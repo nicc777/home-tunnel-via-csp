@@ -6,9 +6,10 @@ import traceback
 
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
+COMMAND_QUEUE_URL = os.getenv('COMMAND_QUEUE_URL', '')
 
 # Files ending with this string will not be processed, but may be created to store state
-STATE_FILE_KEY_EXTENSION = os.getenv('STATE_FILE_KEY', '-tunnel-state.json')
+STATE_FILE_KEY = os.getenv('STATE_FILE_KEY', 'cumulus-tunnel-state.json')
 
 # The S3 bucket for storing state.
 STATE_BUCKET = os.getenv('STATE_BUCKET', '')
@@ -155,7 +156,9 @@ def process_event_records(event: dict):
 
 def handler(event, context):
     if len(STATE_BUCKET) == 0:
-        logger.error('The environment variable STATE_BUCKET *must* be set to a valid S3 bucket name')
+        raise Exception('The environment variable STATE_BUCKET *must* be set to a valid S3 bucket name')
+    if len(COMMAND_QUEUE_URL) == 0:
+        raise Exception('The environment variable COMMAND_QUEUE_URL *must* be set to a valid SQS Queue URL')
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     process_event_records(event=event)
     return "ok"
