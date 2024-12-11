@@ -7,6 +7,12 @@ import traceback
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
 
+# Files ending with this string will not be processed, but may be created to store state
+STATE_FILE_KEY_EXTENSION = bool(int(os.getenv('STATE_FILE_KEY', '-tunnel-state.json')))
+
+# The S3 bucket for storing state.
+STATE_BUCKET = bool(int(os.getenv('STATE_BUCKET', '')))
+
 
 logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
 for handler in logger.handlers[:]: 
@@ -111,6 +117,8 @@ def process_event_records(event: dict):
 
 
 def handler(event, context):
+    if len(STATE_BUCKET) == 0:
+        logger.error('The environment variable STATE_BUCKET *must* be set to a valid S3 bucket name')
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     process_event_records(event=event)
     return "ok"

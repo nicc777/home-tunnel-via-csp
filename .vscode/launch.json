@@ -14,9 +14,14 @@
             // "args": [
             //     "${command:pickArgs}"
             // ],
-            // "args": [
-            //     "--dest=dummy"
-            // ],
+            "args": [
+                "--ports=\"31000-31010\"",
+                "--ips=\"10.10.10.10\"",
+                "--dest=\"nicc777-cumulus-tunnel\"",
+                "-v",
+                "--run-once",
+                "--skip-nat-check"
+            ],
             // "env": {
             //     "PYTHONPATH": "client/agent/src"
             // },

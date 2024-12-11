@@ -5,6 +5,8 @@ import time
 import json
 import socket
 import traceback
+import copy
+import ipaddress
 from datetime import datetime, timedelta
 
 import requests
@@ -105,7 +107,7 @@ def get_s3_file_as_dict(key: str)->str:
     data = dict()
     try:
         bucket_name = runtime_options.destination
-        if bucket_name.startswith('s://'):
+        if bucket_name.startswith('s3://'):
             bucket_name.replace('s3://', '')
         s3 = boto3.resource('s3')
         obj = s3.Object(bucket_name, key)
@@ -125,8 +127,15 @@ def write_s3_data(key: str, data: dict):
         now = datetime.now()
         future_datetime = now + timedelta(hours=24)
         bucket_name = runtime_options.destination
-        if bucket_name.startswith('s://'):
+        if bucket_name.startswith('s3://'):
             bucket_name.replace('s3://', '')
+        logger.debug(
+            'Wring to s3://{}/{} data: {}'.format(
+                bucket_name,
+                key,
+                json.dumps(data)
+            )
+        )
         client = boto3.client('s3')
         response = client.put_object(
             Body=json.dumps(data).encode('utf-8'),
@@ -157,6 +166,112 @@ def delete_s3_key(key: str):
             logger.error('EXCEPTION: {}'.format(traceback.format_exc()))
 
 
+def add_ports_to_agent_data(agent_data: dict)->dict:
+    new_data = copy.deepcopy(agent_data)
+    new_data['ports'] = dict()
+    new_data['ports']['tcp'] = runtime_options.tcp_ports
+    return new_data
+
+
+def check_ip_address_is_ipv4_without_mask(input_address)->bool:
+    try:
+        c = ipaddress.ip_address(input_address)
+        logger.debug('check_ip_address_is_ipv4_without_mask(): input_address={}   type: {}'.format(input_address, type(c)))
+        return isinstance(c, ipaddress.IPv4Address)
+    except:
+        logger.debug('check_ip_address_is_ipv4_without_mask(): EXCEPTION: {}'.format(traceback.format_exc()))
+        return False
+
+
+def check_ip_address_is_ipv4_with_mask(input_address)->bool:
+    try:
+        c = ipaddress.ip_network(input_address)
+        logger.debug('check_ip_address_is_ipv4_with_mask(): input_address={}   type: {}'.format(input_address, type(c)))
+        return isinstance(c, ipaddress.IPv4Network)
+    except:
+        logger.debug('check_ip_address_is_ipv4_with_mask(): EXCEPTION: {}'.format(traceback.format_exc()))
+        return False
+    
+
+def check_ip_address_is_ipv6_without_mask(input_address)->bool:
+    try:
+        c = ipaddress.ip_address(input_address)
+        logger.debug('check_ip_address_is_ipv6_without_mask(): input_address={}   type: {}'.format(input_address, type(c)))
+        return isinstance(c, ipaddress.IPv6Address)
+    except:
+        logger.debug('check_ip_address_is_ipv6_without_mask(): EXCEPTION: {}'.format(traceback.format_exc()))
+        return False
+
+
+def check_ip_address_is_ipv6_with_mask(input_address)->bool:
+    try:
+        c = ipaddress.ip_network(input_address)
+        logger.debug('check_ip_address_is_ipv6_with_mask(): input_address={}   type: {}'.format(input_address, type(c)))
+        return isinstance(c, ipaddress.IPv6Network)
+    except:
+        logger.debug('check_ip_address_is_ipv6_with_mask(): EXCEPTION: {}'.format(traceback.format_exc()))
+        return False
+
+
+def validate_and_return_ip_address(input_address: str, add_mask: bool=True, mask_value_ipv4: str='/32', mask_value_ipv6: str='/128')->str:
+    input_address = input_address.replace('"', '')
+    if check_ip_address_is_ipv4_without_mask(input_address=input_address) is True:
+        if add_mask is True:
+            return '{}{}'.format(input_address, mask_value_ipv4)
+        else:
+            return input_address
+    if check_ip_address_is_ipv4_with_mask(input_address=input_address) is True:
+        if add_mask is True:
+            return input_address
+        else:
+            parts = input_address.split('/')
+            return parts[0]
+    if check_ip_address_is_ipv6_without_mask(input_address=input_address) is True:
+        if add_mask is True:
+            return '{}{}'.format(input_address, mask_value_ipv6)
+        else:
+            return input_address
+    if check_ip_address_is_ipv6_with_mask(input_address=input_address) is True:
+        if add_mask is True:
+            return input_address
+        else:
+            parts = input_address.split('/')
+            return parts[0]
+    raise Exception('Invalid IP Address: {}'.format(input_address))
+    
+
+def detect_ip_address_type_and_return_str(input_address: str)->str:
+    input_address = input_address.replace('"', '')
+    if check_ip_address_is_ipv4_without_mask(input_address=input_address) is True:
+        return 'ipv4'
+    if check_ip_address_is_ipv4_with_mask(input_address=input_address) is True:
+        return 'ipv4'
+    if check_ip_address_is_ipv6_without_mask(input_address=input_address) is True:
+        return 'ipv6'
+    if check_ip_address_is_ipv6_with_mask(input_address=input_address) is True:
+        return 'ipv6'
+    raise Exception('Not a valid IP address: {}'.format(input_address))
+
+
+def generate_extra_ip_address_data()->dict:
+    extra_ip_addresses = dict()
+    extra_ip_addresses['addresses'] = dict()
+    extra_ip_addresses['addresses']['ipv4'] = list()
+    extra_ip_addresses['addresses']['ipv6'] = list()
+    for ip_address_candidate in runtime_options.extra_ip_addresses:
+        try:
+            final_ip_address_with_mask = validate_and_return_ip_address(input_address=ip_address_candidate)
+            ip_adr_type = detect_ip_address_type_and_return_str(input_address=final_ip_address_with_mask)
+            extra_ip_addresses['addresses'][ip_adr_type].append(final_ip_address_with_mask)
+        except:
+            logger.error('EXCEPTION: {}'.format(traceback.format_exc()))
+            logger.error('Failed to evaluate and consider IP address "{}" - ignored'.format(ip_address_candidate))
+    if len(extra_ip_addresses['addresses']['ipv4']) == 0 and len(extra_ip_addresses['addresses']['ipv6']) == 0:
+        return dict()
+    extra_ip_addresses['ports'] = dict()
+    extra_ip_addresses['ports']['tcp'] = runtime_options.tcp_ports
+    return extra_ip_addresses
+
 
 def agent_main():
     logger.info('starting')
@@ -164,22 +279,25 @@ def agent_main():
     while do_loop:
         logger.info('Main loop running')
 
-        public_ip_addresses = get_public_ip_addresses()
-        logger.info('public_ip_addresses: {}'.format(json.dumps(public_ip_addresses)))
+        if runtime_options.nat_check is True:
+            agent_data = add_ports_to_agent_data(agent_data=get_public_ip_addresses())
+            logger.info('agent_data: {}'.format(json.dumps(agent_data)))
 
-        current_extra_ip_addresses_for_agent_at_destination = get_s3_file_as_dict(key=runtime_options.get_agent_extra_ip_addresses_key_name())
-        logger.debug('agent_main(): current_extra_ip_addresses_for_agent_at_destination: {}'.format(json.dumps(current_extra_ip_addresses_for_agent_at_destination)))
+            current_extra_ip_addresses_for_agent_at_destination = get_s3_file_as_dict(key=runtime_options.get_agent_extra_ip_addresses_key_name())
+            logger.debug('agent_main(): current_extra_ip_addresses_for_agent_at_destination: {}'.format(json.dumps(current_extra_ip_addresses_for_agent_at_destination)))
 
-        write_s3_data(
-            key=runtime_options.get_agent_key_name(),
-            data=public_ip_addresses
-        )
+            write_s3_data(
+                key=runtime_options.get_agent_key_name(),
+                data=agent_data
+            )
 
         if len(runtime_options.extra_ip_addresses) > 0:
-            write_s3_data(
-                key=runtime_options.get_agent_extra_ip_addresses_key_name(),
-                data=runtime_options.extra_ip_addresses
-            )
+            extra_agent_data = generate_extra_ip_address_data()
+            if len(extra_agent_data) > 0:
+                write_s3_data(
+                    key=runtime_options.get_agent_extra_ip_addresses_key_name(),
+                    data=extra_agent_data
+                )
         else:
             if len(current_extra_ip_addresses_for_agent_at_destination) > 0:
                 delete_s3_key(key=runtime_options.get_agent_extra_ip_addresses_key_name())
