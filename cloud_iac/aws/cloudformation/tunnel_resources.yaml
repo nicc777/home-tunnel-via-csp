@@ -404,7 +404,7 @@ Resources:
         Variables:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
-          STATE_BUCKET: !Ref ArtifactBucketNameParam
+          STATE_BUCKET: !Ref CumulusTunnelBucketNameParam
           STATE_FILE_KEY: !Ref StateFileKeyParam
           COMMAND_QUEUE_URL: !Ref TunnelInstructionQueue
       Runtime: python3.12
@@ -457,7 +457,7 @@ Resources:
         Variables:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
-          STATE_BUCKET: !Ref ArtifactBucketNameParam
+          STATE_BUCKET: !Ref CumulusTunnelBucketNameParam
           STATE_FILE_KEY: !Ref StateFileKeyParam
           COMMAND_QUEUE_URL: !Ref TunnelInstructionQueue
       Runtime: python3.12
@@ -510,7 +510,7 @@ Resources:
         Variables:
           DEBUG: !Ref DebugParam
           TUNNEL_SECURITY_GROUP: !GetAtt TunnelInstanceSecurityGroup.GroupId
-          STATE_BUCKET: !Ref ArtifactBucketNameParam
+          STATE_BUCKET: !Ref CumulusTunnelBucketNameParam
           STATE_FILE_KEY: !Ref StateFileKeyParam
           COMMAND_QUEUE_URL: !Ref TunnelInstructionQueue
       Runtime: python3.12
@@ -749,7 +749,7 @@ Resources:
             - CumulusTunnelAuthTokenSecretArn: !Ref CumulusTunnelAuthTokenSecret
               ArtifactBucket: !Ref ArtifactBucketNameParam
               SqsUrlValue: !Ref TunnelInstructionQueue
-              StateBucketValue: !Ref ArtifactBucketNameParam
+              StateBucketValue: !Ref CumulusTunnelBucketNameParam
               StateFileValue: !Ref StateFileKeyParam
 
 #######################################################################################################################
