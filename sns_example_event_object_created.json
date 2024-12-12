@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:eu-central-1:000000000000:s3-object-created:00000000-0000-0000-0000-000000000000",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "00000000-0000-0000-0000-000000000000",
+                "TopicArn": "arn:aws:sns:eu-central-1:000000000000:s3-object-created",
+                "Subject": "Amazon S3 Notification",
+                "Message": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"eu-central-1\",\"eventTime\":\"2024-12-12T03:05:48.590Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AAAAAAAAAAAAAAAAAAAAA\"},\"requestParameters\":{\"sourceIPAddress\":\"127.0.0.1\"},\"responseElements\":{\"x-amz-request-id\":\"AAAAAAAAAAAAAAAA\",\"x-amz-id-2\":\"+xyz/s+abc+123=\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"ABC\",\"bucket\":{\"name\":\"my-cumulus-tunnel\",\"ownerIdentity\":{\"principalId\":\"AAAAAAAAAAAAAA\"},\"arn\":\"arn:aws:s3:::my-cumulus-tunnel\"},\"object\":{\"key\":\"agent-test.json\",\"size\":112,\"eTag\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"sequencer\":\"AAAAAAAAAAAAAAAAAA\"}}}]}",
+                "Timestamp": "2024-12-12T03:05:49.295Z",
+                "SignatureVersion": "1",
+                "Signature": "AAA",
+                "SigningCertUrl": "...",
+                "UnsubscribeUrl": "...",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}
