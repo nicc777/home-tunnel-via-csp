@@ -115,6 +115,7 @@ Resources:
         - Id: 'ShortTermRule'
           Status: Enabled
           ExpirationInDays: 1
+          Prefix: "agent-"
       NotificationConfiguration:
         TopicConfigurations:
         - Topic: !Ref CumulusTunnelS3ObjCreatedTopic
