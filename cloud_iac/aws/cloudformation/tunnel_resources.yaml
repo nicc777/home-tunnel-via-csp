@@ -73,6 +73,12 @@ Parameters:
 
 Resources:
 
+  ########################################
+  ###
+  ### SQS
+  ###
+  ########################################
+
   TunnelInstructionQueue: 
     Type: AWS::SQS::Queue
     Properties: 
@@ -367,7 +373,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     DependsOn: S3ObjCreatedLambdaFunction
     Properties:
-      LogGroupName:
+      LogGroupName: 
         Fn::Join:
         - ''
         - - "/aws/lambda/"
@@ -659,9 +665,10 @@ Resources:
             - 's3:ListObjectsV2'
             - 's3:CopyObject'
             Effect: 'Allow'
-            Resource: !Sub 
-            - 'arn:aws:s3:::${Bucket}/*'
-            - Bucket: !Ref ArtifactBucketNameParam
+            Resource: 
+              Fn::Sub: 
+              - 'arn:aws:s3:::${Bucket}/*'
+              - Bucket: !Ref ArtifactBucketNameParam
       Path: /
       RoleName: !Sub '${AWS::StackName}-CumulusTunnelInstanceRole1'
 
@@ -674,7 +681,9 @@ Resources:
 
   InstanceHostLaunchTemplate:
     Type: 'AWS::EC2::LaunchTemplate'
-    DependsOn: CumulusTunnelAuthTokenSecret
+    DependsOn:
+    - CumulusTunnelAuthTokenSecret
+    - TunnelInstructionQueue
     Properties:
       LaunchTemplateName: !Sub '${AWS::StackName}-LaunchTemplate'
       LaunchTemplateData:
@@ -695,7 +704,7 @@ Resources:
         MetadataOptions:
           HttpTokens: 'required'
         UserData: 
-          Fn::Base64:
+          Fn::Base64: 
             Fn::Sub:
             - |
               MIME-Version: 1.0
@@ -723,8 +732,8 @@ Resources:
               echo
               echo "Main setup script location      : s3://${ArtifactBucket}/cumulus-tunnel-setup.sh"
               echo "Secondary setup script location : s3://${ArtifactBucket}/additional-setup.sh"
-              echo "SQS Url                         : ${SQS_URL}"
-              echo "State File                      : s3://${STATE_BUCKET}/${STATE_FILE_KEY}"
+              echo "SQS Url                         : $SQS_URL"
+              echo "State File                      : s3://$STATE_BUCKET/$STATE_FILE_KEY"
               echo
 
               aws s3 cp s3://${ArtifactBucket}/cumulus-tunnel-setup.sh /tmp/cumulus-tunnel-setup.sh || true
@@ -735,6 +744,7 @@ Resources:
 
               /tmp/cumulus-tunnel-setup.sh || true
               /tmp/additional-setup.sh || true
+              --==BOUNDARY==--
             - CumulusTunnelAuthTokenSecretArn: !Ref CumulusTunnelAuthTokenSecret
               ArtifactBucket: !Ref ArtifactBucketNameParam
               SqsUrlValue: !Ref TunnelInstructionQueue

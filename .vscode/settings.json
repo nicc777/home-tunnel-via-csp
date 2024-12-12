@@ -16,7 +16,9 @@
         "!Sub scalar",
         "!Ref scalar",
         "!GetAtt scaler",
+        "!Join scaler",
         "!GetAtt",
-        "!Sub"
+        "!Sub",
+        "!Join"
     ]
 }
