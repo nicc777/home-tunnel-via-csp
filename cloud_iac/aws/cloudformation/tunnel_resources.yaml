@@ -114,7 +114,9 @@ Resources:
           Condition:
             IpAddress:
               aws:SourceIp: !Ref VpcCidrParam
-          Principal: '*'
+          Principal:
+            AWS:
+            - !Ref AWS::AccountId
         - Sid: TunnelQueuePolicy02
           Action:
           - 'sqs:SendMessage'
@@ -123,6 +125,9 @@ Resources:
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             ArnEquals: !GetAtt S3ObjCreatedLambdaFunction.Arn
+          Principal:
+            AWS:
+            - !Ref AWS::AccountId
         - Sid: TunnelQueuePolicy03
           Action:
           - 'sqs:SendMessage'
@@ -131,6 +136,9 @@ Resources:
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             ArnEquals: !GetAtt S3ObjDeletedLambdaFunction.Arn
+          Principal:
+            AWS:
+            - !Ref AWS::AccountId
         - Sid: TunnelQueuePolicy04
           Action:
           - 'sqs:SendMessage'
@@ -139,6 +147,9 @@ Resources:
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             ArnEquals: !GetAtt S3ObjExpiredLambdaFunction.Arn
+          Principal:
+            AWS:
+            - !Ref AWS::AccountId
 
   ########################################
   ###
