@@ -121,6 +121,17 @@ def extract_key(s3_record: dict):
     return ''
 
 
+def load_data_from_s3_object(bucket:str, key: str)->dict:
+    try:
+        obj = s3.Object(bucket, key)
+        return json.loads(
+            obj.get()['Body'].read().decode('utf-8')
+        )
+    except:
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        logger.error('Failed to load object s3://{}/{}'.format(bucket, key))
+
+
 def process_s3_record(record: dict):
     if validate_basic_records(input_data=record, key='s3', expected_key_type=dict) is False:
         logger.error('Failed to parse message')
@@ -132,6 +143,8 @@ def process_s3_record(record: dict):
     if bucket == '' or key == '':
         return
     logger.info('Attempting to parse s3://{}/{}'.format(bucket, key))
+    data = load_data_from_s3_object(bucket=bucket, key=key)
+    logger.debug('Object s3://{}/{}   data: {}'.format(bucket, key, json.dumps(data, default=str)))
     # TODO - Process S3 record
 
 

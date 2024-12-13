@@ -228,26 +228,6 @@ Resources:
             - "s3:GetObject"
             Resource: "*"
 
-  LambdaFunctionSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: General AWS Lambda function security group
-      VpcId: !Ref VpcId1Param
-  
-  LambdaFunctionSgIpv4Egress:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      CidrIp: 0.0.0.0/0
-      GroupId: !GetAtt LambdaFunctionSecurityGroup.GroupId
-      IpProtocol: "-1"
-
-  LambdaFunctionSgIpv6Egress:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      CidrIpv6: "::/0"
-      GroupId: !GetAtt LambdaFunctionSecurityGroup.GroupId
-      IpProtocol: "-1"
-
 
   ########################################
   ###
@@ -393,13 +373,6 @@ Resources:
       MemorySize: 128
       PackageType: Zip
       Role: !GetAtt CumulusTunnelLambdaRole.Arn
-      VpcConfig:
-        SecurityGroupIds:
-        - !Ref LambdaFunctionSecurityGroup
-        SubnetIds:
-        - !Ref SubnetId1Param
-        - !Ref SubnetId2Param
-        - !Ref SubnetId3Param
       Environment:
         Variables:
           DEBUG: !Ref DebugParam
@@ -446,13 +419,6 @@ Resources:
       MemorySize: 128
       PackageType: Zip
       Role: !GetAtt CumulusTunnelLambdaRole.Arn
-      VpcConfig:
-        SecurityGroupIds:
-        - !Ref LambdaFunctionSecurityGroup
-        SubnetIds:
-        - !Ref SubnetId1Param
-        - !Ref SubnetId2Param
-        - !Ref SubnetId3Param
       Environment:
         Variables:
           DEBUG: !Ref DebugParam
@@ -499,13 +465,6 @@ Resources:
       MemorySize: 128
       PackageType: Zip
       Role: !GetAtt CumulusTunnelLambdaRole.Arn
-      VpcConfig:
-        SecurityGroupIds:
-        - !Ref LambdaFunctionSecurityGroup
-        SubnetIds:
-        - !Ref SubnetId1Param
-        - !Ref SubnetId2Param
-        - !Ref SubnetId3Param
       Environment:
         Variables:
           DEBUG: !Ref DebugParam
