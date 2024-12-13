@@ -99,6 +99,8 @@ Resources:
     - S3ObjExpiredLambdaFunction
     - TunnelInstructionQueue
     Properties:
+      Queues:
+      - !Ref TunnelInstructionQueue
       PolicyDocument:
         Statement:
         - Sid: TunnelQueuePolicy01
@@ -137,8 +139,6 @@ Resources:
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             ArnEquals: !GetAtt S3ObjExpiredLambdaFunction.Arn
-      Queues:
-      - !Ref TunnelInstructionQueue
 
   ########################################
   ###
