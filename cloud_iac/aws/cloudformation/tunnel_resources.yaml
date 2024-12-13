@@ -108,10 +108,7 @@ Resources:
           - 'sqs:ReceiveMessage'
           - 'sqs:UntagQueue'
           Effect: 'Allow'
-          Resource:
-            Fn::GetAtt:
-            - 'TunnelInstructionQueue'
-            - 'Arn'
+          Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             IpAddress:
               aws:SourceIp: !Ref VpcCidrParam
@@ -121,10 +118,7 @@ Resources:
           - 'sqs:SendMessage'
           - 'sqs:TagQueue'
           Effect: 'Allow'
-          Resource:
-            Fn::GetAtt:
-            - 'TunnelInstructionQueue'
-            - 'Arn'
+          Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             ArnEquals: !GetAtt S3ObjCreatedLambdaFunction.Arn
         - Sid: TunnelQueuePolicy03
@@ -132,10 +126,7 @@ Resources:
           - 'sqs:SendMessage'
           - 'sqs:TagQueue'
           Effect: 'Allow'
-          Resource:
-            Fn::GetAtt:
-            - 'TunnelInstructionQueue'
-            - 'Arn'
+          Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             ArnEquals: !GetAtt S3ObjDeletedLambdaFunction.Arn
         - Sid: TunnelQueuePolicy04
@@ -143,10 +134,7 @@ Resources:
           - 'sqs:SendMessage'
           - 'sqs:TagQueue'
           Effect: 'Allow'
-          Resource:
-            Fn::GetAtt:
-            - 'TunnelInstructionQueue'
-            - 'Arn'
+          Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
             ArnEquals: !GetAtt S3ObjExpiredLambdaFunction.Arn
       Queues:
