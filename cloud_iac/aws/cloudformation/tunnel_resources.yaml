@@ -124,7 +124,8 @@ Resources:
           Effect: 'Allow'
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
-            ArnEquals: !GetAtt S3ObjCreatedLambdaFunction.Arn
+            ArnEquals:
+              aws:SourceArn: !GetAtt S3ObjCreatedLambdaFunction.Arn
           Principal:
             AWS:
             - !Ref AWS::AccountId
@@ -135,7 +136,8 @@ Resources:
           Effect: 'Allow'
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
-            ArnEquals: !GetAtt S3ObjDeletedLambdaFunction.Arn
+            ArnEquals:
+              aws:SourceArn: !GetAtt S3ObjDeletedLambdaFunction.Arn
           Principal:
             AWS:
             - !Ref AWS::AccountId
@@ -146,7 +148,8 @@ Resources:
           Effect: 'Allow'
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
-            ArnEquals: !GetAtt S3ObjExpiredLambdaFunction.Arn
+            ArnEquals:
+              aws:SourceArn: !GetAtt S3ObjExpiredLambdaFunction.Arn
           Principal:
             AWS:
             - !Ref AWS::AccountId
