@@ -84,6 +84,10 @@ cat <<EOF >> /tmp/event_resources-parameters.json
         "ParameterValue": "..."
     },
     {
+        "ParameterKey": "VpcCidrParam",
+        "ParameterValue": "..."
+    },
+    {
         "ParameterKey": "SubnetId1Param",
         "ParameterValue": "..."
     },

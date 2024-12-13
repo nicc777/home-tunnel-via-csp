@@ -38,6 +38,10 @@ Parameters:
     Type: 'String'
     MinLength: 1
 
+  VpcCidrParam:
+    Type: 'String'
+    MinLength: 1
+
   SubnetId1Param:
     Type: 'String'
     MinLength: 1
@@ -86,6 +90,67 @@ Resources:
       MessageRetentionPeriod: 1800
       QueueName: "cumulus-tunnel-commands"
       VisibilityTimeout: 180
+
+  TunnelQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    DependsOn:
+    - S3ObjCreatedLambdaFunction
+    - S3ObjDeletedLambdaFunction
+    - S3ObjExpiredLambdaFunction
+    - TunnelInstructionQueue
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Sid: TunnelQueuePolicy01
+          Action:
+          - 'sqs:DeleteMessage'
+          - 'sqs:ChangeMessageVisibility'
+          - 'sqs:ReceiveMessage'
+          - 'sqs:UntagQueue'
+          Effect: 'Allow'
+          Resource:
+            Fn::GetAtt:
+            - 'TunnelInstructionQueue'
+            - 'Arn'
+          Condition:
+            IpAddress:
+              aws:SourceIp: !Ref VpcCidrParam
+          Principal: '*'
+        - Sid: TunnelQueuePolicy02
+          Action:
+          - 'sqs:SendMessage'
+          - 'sqs:TagQueue'
+          Effect: 'Allow'
+          Resource:
+            Fn::GetAtt:
+            - 'TunnelInstructionQueue'
+            - 'Arn'
+          Condition:
+            ArnEquals: !GetAtt S3ObjCreatedLambdaFunction.Arn
+        - Sid: TunnelQueuePolicy03
+          Action:
+          - 'sqs:SendMessage'
+          - 'sqs:TagQueue'
+          Effect: 'Allow'
+          Resource:
+            Fn::GetAtt:
+            - 'TunnelInstructionQueue'
+            - 'Arn'
+          Condition:
+            ArnEquals: !GetAtt S3ObjDeletedLambdaFunction.Arn
+        - Sid: TunnelQueuePolicy04
+          Action:
+          - 'sqs:SendMessage'
+          - 'sqs:TagQueue'
+          Effect: 'Allow'
+          Resource:
+            Fn::GetAtt:
+            - 'TunnelInstructionQueue'
+            - 'Arn'
+          Condition:
+            ArnEquals: !GetAtt S3ObjExpiredLambdaFunction.Arn
+      Queues:
+      - !Ref TunnelInstructionQueue
 
   ########################################
   ###
@@ -227,6 +292,11 @@ Resources:
             Action:
             - "s3:GetObject"
             Resource: "*"
+          # sqa
+          - Effect: Allow
+            Action:
+            - "s3:GetObject"
+            Resource: "*"
 
 
   ########################################
@@ -342,7 +412,6 @@ Resources:
       Action: 'lambda:InvokeFunction'
       FunctionName: !GetAtt S3ObjExpiredLambdaFunction.Arn
       Principal: sns.amazonaws.com
-
 
   ########################################
   ###

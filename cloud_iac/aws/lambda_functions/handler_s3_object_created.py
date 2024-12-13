@@ -2,6 +2,8 @@ import logging
 import os
 import sys
 import json
+import copy
+import boto3
 import traceback
 
 
@@ -13,6 +15,9 @@ STATE_FILE_KEY = os.getenv('STATE_FILE_KEY', 'cumulus-tunnel-state.json')
 
 # The S3 bucket for storing state.
 STATE_BUCKET = os.getenv('STATE_BUCKET', '')
+
+# SQS Queue to which to issue commands
+COMMAND_QUEUE_URL = os.getenv('COMMAND_QUEUE_URL', '')
 
 
 logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
@@ -123,6 +128,7 @@ def extract_key(s3_record: dict):
 
 def load_data_from_s3_object(bucket:str, key: str)->dict:
     try:
+        s3 = boto3.resource('s3')
         obj = s3.Object(bucket, key)
         return json.loads(
             obj.get()['Body'].read().decode('utf-8')
@@ -130,6 +136,19 @@ def load_data_from_s3_object(bucket:str, key: str)->dict:
     except:
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
         logger.error('Failed to load object s3://{}/{}'.format(bucket, key))
+
+
+def issue_command_via_sqs(command_data: dict):
+    try:
+        sqs = boto3.client('sqs')
+        response = sqs.send_message(
+            QueueUrl=COMMAND_QUEUE_URL,
+            MessageBody=json.dumps(command_data)
+        )
+        logger.debug('SQS Response: {}'.format(json.dumps(response, default=str)))
+    except:
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        logger.error('Failed to generate and/or post command to SQS')
 
 
 def process_s3_record(record: dict):
@@ -145,7 +164,21 @@ def process_s3_record(record: dict):
     logger.info('Attempting to parse s3://{}/{}'.format(bucket, key))
     data = load_data_from_s3_object(bucket=bucket, key=key)
     logger.debug('Object s3://{}/{}   data: {}'.format(bucket, key, json.dumps(data, default=str)))
-    # TODO - Process S3 record
+    if 'ports' in data:
+        for port in data['ports']:
+            rule_base = {
+                'command': 'add-rule-if-not-present',
+                'tcp_port': '{}'.format(port),
+                'state_key': key,
+            }
+            if 'ipv4' in data:
+                rule = copy.deepcopy(rule_base)
+                rule['ipv4'] = data['ipv4']
+                issue_command_via_sqs(command_data=rule)
+            if 'ipv6' in data:
+                rule = copy.deepcopy(rule_base)
+                rule['ipv6'] = data['ipv6']
+                issue_command_via_sqs(command_data=rule)
 
 
 def process_message(message: dict):

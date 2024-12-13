@@ -279,12 +279,12 @@ def agent_main():
     while do_loop:
         logger.info('Main loop running')
 
+        current_extra_ip_addresses_for_agent_at_destination = get_s3_file_as_dict(key=runtime_options.get_agent_extra_ip_addresses_key_name())
+        logger.debug('agent_main(): current_extra_ip_addresses_for_agent_at_destination: {}'.format(json.dumps(current_extra_ip_addresses_for_agent_at_destination)))
+
         if runtime_options.nat_check is True:
             agent_data = add_ports_to_agent_data(agent_data=get_public_ip_addresses())
             logger.info('agent_data: {}'.format(json.dumps(agent_data)))
-
-            current_extra_ip_addresses_for_agent_at_destination = get_s3_file_as_dict(key=runtime_options.get_agent_extra_ip_addresses_key_name())
-            logger.debug('agent_main(): current_extra_ip_addresses_for_agent_at_destination: {}'.format(json.dumps(current_extra_ip_addresses_for_agent_at_destination)))
 
             write_s3_data(
                 key=runtime_options.get_agent_key_name(),
