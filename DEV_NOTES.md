@@ -106,6 +106,14 @@ cat <<EOF >> /tmp/event_resources-parameters.json
     {
         "ParameterKey": "CumulusTunnelAmiIdParam",
         "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "DefaultRoute53ZoneIdParam",
+        "ParameterValue": "..."
+    },
+    {
+        "ParameterKey": "DefaultRoute53DomainParam",
+        "ParameterValue": "..."
     }
 ]
 EOF

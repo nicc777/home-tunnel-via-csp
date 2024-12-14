@@ -69,6 +69,28 @@ Parameters:
     MinLength: 1
     Default: "cumulus-tunnel-state.json"
 
+  DefaultRoute53ZoneIdParam:
+    Type: 'String'
+    MinLength: 1
+    Description: "The default Route 53 Zone ID for DNS records. Will also be used for the management UI record"
+
+  DefaultRoute53DomainParam:
+    Type: 'String'
+    MinLength: 1
+    Description: "The default domain"
+
+  ManagementDomainRecordParam:
+    Type: 'String'
+    MinLength: 1
+    Description: "The default management sub-domain for the management UI"
+    Default: "cumulus-tunnel-admin"
+
+  DomainCertificateArnParam:
+    Type: 'String'
+    MinLength: 1
+    Description: "ACM Certificate for the default domain"
+
+
 #######################################################################################################################
 ###
 ###     RESOURCES
@@ -268,7 +290,7 @@ Resources:
           - sts:AssumeRole
       Path: "/"
       Policies:
-      - PolicyName: MattermostAlertSenderLambdaFunctionPolicy
+      - PolicyName: CumulusTunnelLambdaFunctionPolicy
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -583,7 +605,34 @@ Resources:
 
   ########################################
   ###
-  ### EC2 ACCESS VIA ECM
+  ### SECURITY GROUP (FIREWALL) ALB
+  ###
+  ########################################
+
+  TunnelInstanceAlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the EC2 Instance hosting the tunnels
+      VpcId: !Ref VpcId1Param
+      GroupName: cumulus-tunnel-instance-sg
+
+  TunnelInstanceAlbSgIpv4Egress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      CidrIp: 0.0.0.0/0
+      GroupId: !GetAtt TunnelInstanceAlbSecurityGroup.GroupId
+      IpProtocol: "-1"
+
+  TunnelInstanceAlbSgIpv6Egress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      CidrIpv6: "::/0"
+      GroupId: !GetAtt TunnelInstanceAlbSecurityGroup.GroupId
+      IpProtocol: "-1"
+
+  ########################################
+  ###
+  ### EC2 ACCESS VIA SSM
   ###
   ########################################
 
@@ -701,6 +750,26 @@ Resources:
               Fn::Sub: 
               - 'arn:aws:s3:::${Bucket}/*'
               - Bucket: !Ref ArtifactBucketNameParam
+      - PolicyName: 'SqsPolicy01'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement: 
+          - Action: 
+            - 'sqs:DeleteMessage'
+            - 'sqs:ChangeMessageVisibility'
+            - 'sqs:ReceiveMessage'
+            Effect: 'Allow'
+            Resource: "*"
+      - PolicyName: 'Route53Policy01'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement: 
+          - Action: 
+            - 'route53:TestDNSAnswer'
+            - 'route53:ListHostedZones'
+            - 'route53:ChangeResourceRecordSets'
+            Effect: 'Allow'
+            Resource: "*"
       Path: /
       RoleName: !Sub '${AWS::StackName}-CumulusTunnelInstanceRole1'
 
@@ -782,6 +851,116 @@ Resources:
               SqsUrlValue: !Ref TunnelInstructionQueue
               StateBucketValue: !Ref CumulusTunnelBucketNameParam
               StateFileValue: !Ref StateFileKeyParam
+
+  ########################################
+  ###
+  ### EC2 AUTOSCALING GROUP & ALB 4 HTTP
+  ###
+  ########################################
+
+  CumulusTunnelInstanceAutoscalingGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties: 
+      AutoScalingGroupName: !Sub '${AWS::StackName}-AutoScalingGroup'
+      LaunchTemplate: 
+        LaunchTemplateId: !Ref InstanceHostLaunchTemplate
+        Version: !GetAtt InstanceHostLaunchTemplate.DefaultVersionNumber
+      DesiredCapacity: !Ref DesiredCapacityParam
+      MinSize: '1'
+      MaxSize: '1'
+      VPCZoneIdentifier:
+      - !Ref SubnetId1Param
+      - !Ref SubnetId2Param
+      - !Ref SubnetId3Param
+      Tags:
+      - Key: 'Name'
+        Value: 'cumulus-tunnel'
+        PropagateAtLaunch: true
+      TargetGroupARNs:
+      - !Ref CumulusTunnelTargetGroup
+
+  CumulusTunnelTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: !Ref ManagementDomainRecordParam
+      TargetType: 'instance'
+      IpAddressType: 'ipv4'
+      Protocol: 'HTTP'
+      Port: 80
+      VpcId: !Ref VpcId1Param
+      HealthCheckEnabled: True
+      HealthCheckProtocol: 'HTTP'
+      HealthCheckPort: 80
+      HealthCheckPath: '/'
+      HealthCheckIntervalSeconds: 300
+      HealthCheckTimeoutSeconds: 120
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: '200'
+      UnhealthyThresholdCount: 3
+
+  CumulusTunnelAlb:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Name: !Ref CumulusTunnelInstanceDnsName
+      Type: 'application'
+      Scheme: 'internal'
+      IpAddressType: 'ipv4'
+      SecurityGroups:
+      - !Ref TunnelInstanceAlbSecurityGroup
+      Subnets:
+      - !Ref SubnetId1Param
+      - !Ref SubnetId2Param
+      - !Ref SubnetId3Param
+      LoadBalancerAttributes: 
+        - Key: routing.http.drop_invalid_header_fields.enabled
+          Value: true
+
+  CumulusTunnelListener80:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      Protocol: 'HTTP'
+      Port: 80
+      LoadBalancerArn: !Ref CumulusTunnelAlb
+      DefaultActions:
+        - Type: 'redirect'
+          RedirectConfig:
+            Protocol: 'HTTPS'
+            Port: 443
+            Host: "#{host}"
+            Path: "/#{path}"
+            Query: "#{query}"
+            StatusCode: "HTTP_301"
+
+  CumulusTunnelListener443:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    DependsOn: 
+    - CumulusTunnelTargetGroup
+    - CumulusTunnelInstanceAutoscalingGroup
+    Properties:
+      Protocol: 'HTTPS'
+      Port: 443
+      LoadBalancerArn: !Ref CumulusTunnelAlb
+      SslPolicy: 'ELBSecurityPolicy-TLS-1-2-Ext-2018-06'
+      Certificates:
+      - CertificateArn: !Ref DomainCertificateArnParam
+      DefaultActions:
+      - Type: 'forward'
+        ForwardConfig:
+          TargetGroups:
+          - TargetGroupArn: !Ref CumulusTunnelTargetGroup
+            Weight: 1
+
+  CumulusTunnelDnsRecordSet:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref DefaultRoute53ZoneIdParam
+      Type: 'A'
+      Name: !Sub '${ManagementDomainRecordParam}.${DefaultRoute53DomainParam}'
+      AliasTarget:
+        HostedZoneId: !GetAtt 'CumulusTunnelAlb.CanonicalHostedZoneID'
+        DNSName: !GetAtt 'CumulusTunnelAlb.DNSName'
+
 
 #######################################################################################################################
 ###
