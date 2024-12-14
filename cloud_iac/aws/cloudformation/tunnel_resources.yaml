@@ -614,7 +614,7 @@ Resources:
     Properties:
       GroupDescription: Security group for the EC2 Instance hosting the tunnels
       VpcId: !Ref VpcId1Param
-      GroupName: cumulus-tunnel-instance-sg
+      GroupName: cumulus-tunnel-alb-sg
 
   TunnelInstanceAlbSgIpv4Egress:
     Type: AWS::EC2::SecurityGroupEgress
@@ -770,6 +770,8 @@ Resources:
             - 'route53:ChangeResourceRecordSets'
             Effect: 'Allow'
             Resource: "*"
+
+      # TODO Add admin of security groups
       Path: /
       RoleName: !Sub '${AWS::StackName}-CumulusTunnelInstanceRole1'
 
