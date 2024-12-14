@@ -165,20 +165,21 @@ def process_s3_record(record: dict):
     data = load_data_from_s3_object(bucket=bucket, key=key)
     logger.debug('Object s3://{}/{}   data: {}'.format(bucket, key, json.dumps(data, default=str)))
     if 'ports' in data:
-        for port in data['ports']:
-            rule_base = {
-                'command': 'add-rule-if-not-present',
-                'tcp_port': '{}'.format(port),
-                'state_key': key,
-            }
-            if 'ipv4' in data:
-                rule = copy.deepcopy(rule_base)
-                rule['ipv4'] = data['ipv4']
-                issue_command_via_sqs(command_data=rule)
-            if 'ipv6' in data:
-                rule = copy.deepcopy(rule_base)
-                rule['ipv6'] = data['ipv6']
-                issue_command_via_sqs(command_data=rule)
+        if 'tcp' in data['ports']:
+            for port in data['ports']['tcp']:
+                rule_base = {
+                    'command': 'add-rule-if-not-present',
+                    'tcp_port': '{}'.format(port),
+                    'state_key': key,
+                }
+                if 'ipv4' in data:
+                    rule = copy.deepcopy(rule_base)
+                    rule['ipv4'] = data['ipv4']
+                    issue_command_via_sqs(command_data=rule)
+                if 'ipv6' in data:
+                    rule = copy.deepcopy(rule_base)
+                    rule['ipv6'] = data['ipv6']
+                    issue_command_via_sqs(command_data=rule)
 
 
 def process_message(message: dict):

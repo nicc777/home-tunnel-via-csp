@@ -108,7 +108,6 @@ Resources:
           - 'sqs:DeleteMessage'
           - 'sqs:ChangeMessageVisibility'
           - 'sqs:ReceiveMessage'
-          - 'sqs:UntagQueue'
           Effect: 'Allow'
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
@@ -120,7 +119,7 @@ Resources:
         - Sid: TunnelQueuePolicy02
           Action:
           - 'sqs:SendMessage'
-          - 'sqs:TagQueue'
+          - 'sqs:GetQueueUrl'
           Effect: 'Allow'
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
@@ -132,7 +131,7 @@ Resources:
         - Sid: TunnelQueuePolicy03
           Action:
           - 'sqs:SendMessage'
-          - 'sqs:TagQueue'
+          - 'sqs:GetQueueUrl'
           Effect: 'Allow'
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
@@ -144,7 +143,8 @@ Resources:
         - Sid: TunnelQueuePolicy04
           Action:
           - 'sqs:SendMessage'
-          - 'sqs:TagQueue'
+
+          - 'sqs:GetQueueUrl'
           Effect: 'Allow'
           Resource: !GetAtt TunnelInstructionQueue.Arn
           Condition:
@@ -294,10 +294,11 @@ Resources:
             Action:
             - "s3:GetObject"
             Resource: "*"
-          # sqa
+          # sqs
           - Effect: Allow
             Action:
-            - "s3:GetObject"
+            - "sqs:SendMessage"
+            - "sqs:GetQueueUrl"
             Resource: "*"
 
 
