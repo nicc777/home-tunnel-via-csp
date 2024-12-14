@@ -902,7 +902,7 @@ Resources:
   CumulusTunnelAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
-      Name: !Ref CumulusTunnelInstanceDnsName
+      Name: !Ref ManagementDomainRecordParam
       Type: 'application'
       Scheme: 'internal'
       IpAddressType: 'ipv4'
