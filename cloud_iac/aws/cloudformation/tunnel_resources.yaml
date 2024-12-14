@@ -865,7 +865,7 @@ Resources:
       LaunchTemplate: 
         LaunchTemplateId: !Ref InstanceHostLaunchTemplate
         Version: !GetAtt InstanceHostLaunchTemplate.DefaultVersionNumber
-      DesiredCapacity: !Ref DesiredCapacityParam
+      DesiredCapacity: '1'
       MinSize: '1'
       MaxSize: '1'
       VPCZoneIdentifier:
