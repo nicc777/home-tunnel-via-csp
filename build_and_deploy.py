@@ -56,6 +56,15 @@ parser.add_argument(
     dest='csp_region',
     required=True
 )
+parser.add_argument(
+    '--values',
+    help='The values to pass for the IaC function for the specified Cloud Service Provider implementation. For AWS, this is the JSON parameters file for the CloudFormation template.',
+    action='store',
+    type=str,
+    dest='iac_values',
+    required=False,
+    default='/tmp/event_resources-parameters.json'
+)
 
 args = parser.parse_args()
 DEBUG = args.verbose
@@ -112,7 +121,11 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         super().__init__(args)
 
     def validate_args(self):
-        logger.info('Validating basic AWS S3 access')
+        logger.info('Validating values...')
+        if os.path.exists(self.args.iac_values) is False:
+            raise Exception('Values in JSON parameter file "{}" NOT FOUND. Please create this file or supply another file.'.format(self.args.iac_values))
+        logger.info('Using CloudFormation parameters file {}'.format(self.args.iac_values))
+        logger.info('Validating basic AWS S3 access...')
         self.upload_artifact(
             source_file='cloud_iac/aws/ec2_setup_scripts/cumulus-tunnel-setup.sh',
             destination={
