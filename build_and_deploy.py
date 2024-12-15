@@ -118,7 +118,28 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
 
     def __init__(self, args):
         logger.info('Target AWS')
+        self.cloud_formation_strategy = 'CREATE'
         super().__init__(args)
+
+    def _list_cloudformation_stacks(self, next_token: str=None)->list:
+        stack_names = list()
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        response = dict()
+        if next_token is not None:
+            response = client.list_stacks(NextToken=next_token)
+        else:
+            response = client.list_stacks()
+        if 'NextToken' in response:
+            stack_names += self._list_cloudformation_stacks(next_token=response['NextToken'])
+        if 'StackSummaries' in response:
+            for stack_summary in response['StackSummaries']:
+                if 'StackName' in stack_summary:
+                    if stack_summary['StackName'] not in stack_names:
+                        stack_names.append(stack_summary['StackName'])
+        return stack_names
 
     def validate_args(self):
         logger.info('Validating values...')
@@ -134,6 +155,12 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             }
         )
         logger.info('Artifact upload to S3 works!')
+        logger.info('Checking if CloudFormation template "cumulus-tunnel-event-resources" already exists')
+        current_cloudformation_stacks = self._list_cloudformation_stacks()
+        logger.debug('Current CloudFormation stacks: {}'.format(json.dumps(current_cloudformation_stacks, default=str)))
+        if 'cumulus-tunnel-event-resources' in current_cloudformation_stacks:
+            self.cloud_formation_strategy = 'CHANGE_SET'
+        logger.info('CloudFormation strategy: {}'.format(self.cloud_formation_strategy))
 
     def build(self):
         self._prep_cloud_serverless_functions()
