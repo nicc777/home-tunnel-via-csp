@@ -90,6 +90,7 @@ class CloudServiceProviderBase:
 
     def __init__(self, args):
         self.args = args
+        self.validate_args()
 
     def validate_args(self):
         raise Exception('Must be implemented by CSP class')
@@ -111,7 +112,15 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         super().__init__(args)
 
     def validate_args(self):
-        pass
+        logger.info('Validating basic AWS S3 access')
+        self.upload_artifact(
+            source_file='cloud_iac/aws/ec2_setup_scripts/cumulus-tunnel-setup.sh',
+            destination={
+                'bucket_name': self.args.artifact_location,
+                'key': 'cumulus-tunnel-setup.sh',
+            }
+        )
+        logger.info('Artifact upload to S3 works!')
 
     def build(self):
         self._prep_cloud_serverless_functions()
@@ -202,8 +211,8 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         import boto3.session
         session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
         s3 = session.client('s3')
-        response = s3.upload_file(source_file, destination['bucket_name'], destination['key'])
-        logger.debug('response: {}'.format(json.dumps(response, default=str)))
+        s3.upload_file(source_file, destination['bucket_name'], destination['key'])
+        logger.info('Uploaded file {} to s3://{}/{}'.format(source_file, destination['bucket_name'], destination['key']))
 
 
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
