@@ -78,7 +78,7 @@ fi
 echo "DONE"
 echo
 echo "  Package Directory : ${package_dir}"
-echo "  Pakage File       : ${package_dir}/${package_name}.zip"
+echo "  Package File      : ${package_dir}/${package_name}.zip"
 echo
 
 
