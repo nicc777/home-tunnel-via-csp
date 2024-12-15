@@ -65,6 +65,15 @@ parser.add_argument(
     required=False,
     default='/tmp/event_resources-parameters.json'
 )
+parser.add_argument(
+    '--extra_vm_setup',
+    help='The optional custom setup script to be run when the tunnel VM starts up. Must be a SHELL script, if supplied.',
+    action='store',
+    type=str,
+    dest='extra_vm_setup',
+    required=False,
+    default='cloud_iac/aws/ec2_setup_scripts/additional-setup.sh'
+)
 
 args = parser.parse_args()
 DEBUG = args.verbose
@@ -164,6 +173,13 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
 
     def build(self):
         self._prep_cloud_serverless_functions()
+        self.upload_artifact(
+            source_file=self.args.extra_vm_setup,
+            destination={
+                'bucket_name': self.args.artifact_location,
+                'key': 'additional-setup.sh',
+            }
+        )
 
     def _prep_cloud_serverless_functions(self):
         success = True
