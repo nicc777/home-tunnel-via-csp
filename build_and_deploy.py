@@ -180,6 +180,14 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 'key': 'additional-setup.sh',
             }
         )
+        logger.info('Uploading the CloudFormation template...')
+        self.upload_artifact(
+            source_file='cloud_iac/aws/cloudformation/tunnel_resources.yaml',
+            destination={
+                'bucket_name': self.args.artifact_location,
+                'key': 'tunnel_resources.yaml',
+            }
+        )
 
     def _prep_cloud_serverless_functions(self):
         success = True
