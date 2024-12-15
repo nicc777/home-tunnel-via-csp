@@ -5,6 +5,8 @@ import sys
 import logging
 import argparse
 import json
+from datetime import datetime, timezone
+import time
 import traceback
 import subprocess
 
@@ -104,6 +106,11 @@ def run_shell_script(script_path, *args):
     raise RuntimeError(f"Error executing script '{script_path}' with args: {args}: {e}")
 
 
+def load_json_file(file)->dict:
+    with open(file, 'r') as f:
+        return json.loads(f.read())
+
+
 class CloudServiceProviderBase:
 
     def __init__(self, args):
@@ -120,6 +127,9 @@ class CloudServiceProviderBase:
         raise Exception('Must be implemented by CSP class')
     
     def upload_artifact(self, source_file: str, destination: dict):
+        raise Exception('Must be implemented by CSP class')
+
+    def deploy(self):
         raise Exception('Must be implemented by CSP class')
 
 
@@ -278,6 +288,126 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         s3.upload_file(source_file, destination['bucket_name'], destination['key'])
         logger.info('Uploaded file {} to s3://{}/{}'.format(source_file, destination['bucket_name'], destination['key']))
 
+    def _delete_change_set(self, change_set_id: str):
+        logger.info('Deleting Change Set {}'.format(change_set_id))
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        client.delete_change_set(
+            ChangeSetName=change_set_id
+        )
+
+    def _wait_for_change_set_status_complete(self, change_set_id: str, next_token: str=None, try_count: int=0, max_tries: int=100, sleep_interval_seconds: int=10)->str:
+        counter = try_count + 1
+        if counter > max_tries:
+            raise Exception('Maximum attempts reached')
+        logger.info('Checking Change Set status... Try number {} (max={})'.format(counter, max_tries))
+        logger.debug('change_set_id: {}'.format(change_set_id))
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        response = dict()
+        if next_token is not None:
+            response = client.describe_change_set(
+                ChangeSetName=change_set_id,
+                NextToken=next_token
+            )
+        else:
+            response = client.describe_change_set(
+                ChangeSetName=change_set_id
+            )
+        execution_status = 'UNKNOWN'
+        status = 'UNKNOWN'
+        status_reason = ''
+        if 'ExecutionStatus' in response:
+            logger.info('\t ExecutionStatus : {}'.format(response['ExecutionStatus']))
+            execution_status = response['ExecutionStatus']
+        if 'Status' in response:
+            logger.info('\t Status          : {}'.format(response['Status']))
+            status = response['Status']
+        if 'StatusReason' in response:
+            logger.info('\t StatusReason    : {}'.format(response['StatusReason']))
+            status_reason = response['StatusReason']
+        if 'Changes' in response:
+            qty_changes = len(response['Changes'])
+            logger.info('\t Qty Changes     : {}'.format(qty_changes))
+        if 'NextToken' in response:
+            logger.warning('Ignoring NextToken for now...')
+        if execution_status == 'UNAVAILABLE' and status == 'FAILED':
+            if 'The submitted information didn\'t contain changes' in status_reason:
+                self._delete_change_set(change_set_id=change_set_id)
+                return
+        logger.info('\t Sleeping for {} seconds'.format(sleep_interval_seconds))
+        time.sleep(sleep_interval_seconds)
+        self._wait_for_change_set_status_complete(
+            change_set_id=change_set_id,
+            next_token=next_token,
+            try_count=counter,
+            max_tries=max_tries,
+            sleep_interval_seconds=sleep_interval_seconds
+        )
+
+    def _create_cloudformation_new_stack(self):
+        logger.info('Attempting to create a new CloudFormation Stack')
+        template_url = 'https://{}.s3.{}.amazonaws.com/tunnel_resources.yaml'.format(
+            self.args.artifact_location,
+            self.args.csp_region
+        )
+        logger.debug('template_url: {}'.format(template_url))
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        response = client.create_stack(
+            StackName='cumulus-tunnel-event-resources',
+            TemplateURL=template_url,
+            Parameters=load_json_file(file='{}'.format(self.args.iac_values)),
+            TimeoutInMinutes=60,
+            Capabilities=[
+                'CAPABILITY_IAM',
+            ],
+            OnFailure='DO_NOTHING'
+        )
+        logger.debug('response: {}'.format(json.dumps(response, default=str)))
+
+    def _create_cloudformation_change_set(self):
+        logger.info('Attempting to create a CloudFormation Change Set')
+        template_url = 'https://{}.s3.{}.amazonaws.com/tunnel_resources.yaml'.format(
+            self.args.artifact_location,
+            self.args.csp_region
+        )
+        logger.debug('template_url: {}'.format(template_url))
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        response = client.create_change_set(
+            StackName='cumulus-tunnel-event-resources',
+            TemplateURL=template_url,
+            Parameters=load_json_file(file='{}'.format(self.args.iac_values)),
+            Capabilities=[
+                'CAPABILITY_IAM',
+            ],
+            OnStackFailure='DO_NOTHING',
+            ChangeSetName='changeset-{}'.format(int(datetime.now(tz=timezone.utc).timestamp())),
+            Description='Change set from build script on {}'.format(datetime.now(tz=timezone.utc).isoformat()),
+            ChangeSetType='UPDATE'
+        )
+        logger.debug('response: {}'.format(json.dumps(response, default=str)))
+        if 'Id' not in response:
+            raise Exception('Appears that the change-set failed to create')
+        change_set_id = response['Id']
+        self._wait_for_change_set_status_complete(change_set_id=change_set_id)
+
+
+    def deploy(self):
+        if self.cloud_formation_strategy == 'CREATE':
+            self._create_cloudformation_new_stack()
+        else:
+            self._create_cloudformation_change_set()
+
 
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
     'aws': AwsCloudServiceProvider
@@ -292,6 +422,7 @@ def main():
         sp_class_instance = sp_class(args=args)
         logger.info('Building packages and preparing artifacts')
         sp_class_instance.build()
+        sp_class_instance.deploy()
     else:
         logger.error(
             'Cloud Service Provider "{}" not yet implemented or supported. Supported options: {}'.format(
