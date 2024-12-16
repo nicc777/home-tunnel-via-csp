@@ -309,6 +309,16 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             ChangeSetName=change_set_id
         )
 
+    def _execute_change_set(self, change_set_id: str):
+        logger.info('Executing Change Set {}'.format(change_set_id))
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        client.execute_change_set(
+            ChangeSetName=change_set_id
+        )
+
     def _wait_for_change_set_status_complete(self, change_set_id: str, next_token: str=None, try_count: int=0, max_tries: int=100, sleep_interval_seconds: int=10)->str:
         counter = try_count + 1
         if counter > max_tries:
@@ -350,6 +360,11 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             if 'The submitted information didn\'t contain changes' in status_reason:
                 self._delete_change_set(change_set_id=change_set_id)
                 return
+        elif execution_status == 'AVAILABLE' and status == 'CREATE_COMPLETE':
+           self._execute_change_set(change_set_id=change_set_id)
+        elif execution_status == 'EXECUTE_COMPLETE' and status == 'CREATE_COMPLETE':
+            logger.info('All changes applied successfully')
+            return
         logger.info('\t Sleeping for {} seconds'.format(sleep_interval_seconds))
         time.sleep(sleep_interval_seconds)
         self._wait_for_change_set_status_complete(
