@@ -76,6 +76,14 @@ parser.add_argument(
     required=False,
     default='cloud_iac/aws/ec2_setup_scripts/additional-setup.sh'
 )
+parser.add_argument(
+    '--refresh_running_vm',
+    help='Enables DEBUG logging',
+    action='store_true',
+    default=False,
+    required=False,
+    dest='refresh_running_vm'
+)
 
 args = parser.parse_args()
 DEBUG = args.verbose
@@ -130,6 +138,9 @@ class CloudServiceProviderBase:
         raise Exception('Must be implemented by CSP class')
 
     def deploy(self):
+        raise Exception('Must be implemented by CSP class')
+    
+    def refresh_vm(self):
         raise Exception('Must be implemented by CSP class')
 
 
@@ -367,6 +378,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             TimeoutInMinutes=60,
             Capabilities=[
                 'CAPABILITY_IAM',
+                'CAPABILITY_NAMED_IAM'
             ],
             OnFailure='DO_NOTHING'
         )
@@ -389,6 +401,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             Parameters=load_json_file(file='{}'.format(self.args.iac_values)),
             Capabilities=[
                 'CAPABILITY_IAM',
+                'CAPABILITY_NAMED_IAM'
             ],
             OnStackFailure='DO_NOTHING',
             ChangeSetName='changeset-{}'.format(int(datetime.now(tz=timezone.utc).timestamp())),
@@ -407,6 +420,13 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             self._create_cloudformation_new_stack()
         else:
             self._create_cloudformation_change_set()
+
+    def refresh_vm(self):
+        if self.args.refresh_running_vm is True:
+            import boto3
+            import boto3.session
+            session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+            client = session.client('autoscaling')
 
 
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {

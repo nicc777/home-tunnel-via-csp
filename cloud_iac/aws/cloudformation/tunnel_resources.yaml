@@ -989,4 +989,14 @@ Outputs:
     Export:
       Name: 'CumulusTunnelBucketPolicyArn'
 
+  InstanceHostLaunchTemplateId:
+    Value: !Ref InstanceHostLaunchTemplate
+    Export:
+      Name: 'InstanceHostLaunchTemplateId'
+
+  CumulusTunnelInstanceAutoscalingGroupName:
+    Value: !Ref CumulusTunnelInstanceAutoscalingGroup
+    Export:
+      Name: 'CumulusTunnelInstanceAutoscalingGroupName'
+
   
