@@ -485,12 +485,42 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                             outputs = stack['Outputs']
         return outputs
 
+    def get_output_value_from_key(self, key: str)->str:
+        value = None
+        for output in self.stack_outputs:
+            if 'OutputKey' in output and 'OutputValue' in output:
+                if output['OutputKey'] == key:
+                    value = output['OutputValue']
+        return value
+
     def refresh_vm(self):
         if self.args.refresh_running_vm is True:
+            launch_template_id = self.get_output_value_from_key(key='InstanceHostLaunchTemplateId')
+            autoscaling_group_name = self.get_output_value_from_key(key='CumulusTunnelInstanceAutoscalingGroupName')
             import boto3
             import boto3.session
             session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
             client = session.client('autoscaling')
+            response = client.start_instance_refresh(
+                AutoScalingGroupName=autoscaling_group_name,
+                DesiredConfiguration={
+                    'LaunchTemplate': {
+                        'LaunchTemplateId': launch_template_id,
+                        'Version': '$Latest'
+                    }
+                },
+                Preferences={
+                    'MinHealthyPercentage': 90,
+                    'SkipMatching': True
+                }
+            )
+            logger.debug('response: {}'.format(json.dumps(response, default=str)))
+            if 'InstanceRefreshId' in response:
+                logger.info('Instance refresh ID: {}'.format(response['InstanceRefreshId']))
+                logger.info('The Virtual Machine will be refreshed. This process may take a couple of minutes.')
+                logger.warning('If no changes were made, you may still need to manually terminate the runnign instance to force a new instance to start.')
+            else:
+                logger.warning('Unable to confirm if the Virtual Machine refresh has succeeded. Please check the AWS console.')
 
 
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
@@ -507,6 +537,7 @@ def main():
         logger.info('Building packages and preparing artifacts')
         sp_class_instance.build()
         sp_class_instance.deploy()
+        sp_class_instance.refresh_vm()
     else:
         logger.error(
             'Cloud Service Provider "{}" not yet implemented or supported. Supported options: {}'.format(
