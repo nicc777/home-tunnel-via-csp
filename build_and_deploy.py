@@ -149,6 +149,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
     def __init__(self, args):
         logger.info('Target AWS')
         self.cloud_formation_strategy = 'CREATE'
+        self.stack_outputs = list()
         super().__init__(args)
 
     def _list_cloudformation_stacks(self, next_token: str=None)->list:
@@ -429,12 +430,60 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         change_set_id = response['Id']
         self._wait_for_change_set_status_complete(change_set_id=change_set_id)
 
-
     def deploy(self):
         if self.cloud_formation_strategy == 'CREATE':
             self._create_cloudformation_new_stack()
         else:
             self._create_cloudformation_change_set()
+        self.stack_outputs = self._get_stack_outputs()
+        logger.info('OUTPUTS:')
+        for output in self.stack_outputs:
+            output_key = None
+            output_value = None
+            description = 'No Description'
+            export_name = '-'
+            if 'OutputKey' in output and 'OutputValue' in output:
+                output_key = output['OutputKey']
+                output_value = output['OutputValue']
+                if 'Description' in output:
+                    description = output['Description']
+                if 'ExportName' in output:
+                    if output['ExportName'] is not None:
+                        export_name = output['ExportName']
+                if output_key is not None and output_value is not None:
+                    logger.info(
+                        '  * {} = "{}"   [export="{}"] - {}'.format(
+                            output_key,
+                            output_value,
+                            export_name,
+                            description
+                        )
+                    )
+
+    def _get_stack_outputs(self, next_token: str=None)->list:
+        outputs = list()
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        response = dict()
+        if next_token is not None:
+            response = client.describe_stacks(
+                StackName='cumulus-tunnel-event-resources',
+                NextToken=next_token
+            )
+        else:
+            response = client.describe_stacks(StackName='cumulus-tunnel-event-resources')
+        if 'NextToken' in response:
+            data = self._get_stack_outputs(next_token=response['NextToken'])
+            outputs += data
+        if 'Stacks' in response:
+            for stack in response['Stacks']:
+                if 'StackName' in stack:
+                    if stack['StackName'] == 'cumulus-tunnel-event-resources':
+                        if 'Outputs' in stack:
+                            outputs = stack['Outputs']
+        return outputs
 
     def refresh_vm(self):
         if self.args.refresh_running_vm is True:
