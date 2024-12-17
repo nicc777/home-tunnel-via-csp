@@ -11,9 +11,10 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 # Project Status
 
-| Date       | Status   | Notes                                     |
-|------------|:--------:|-------------------------------------------|
-| 2024-12-07 | Planning | Initial planning and setup of the project |
+| Date       | Status           | Notes                                                     |
+|------------|:----------------:|-----------------------------------------------------------|
+| 2024-12-17 | Work in Progress | Most of the AWS IaC is done. Busy with the tunnel service |
+| 2024-12-07 | Planning         | Initial planning and setup of the project                 |
 
 # Planned features
 
