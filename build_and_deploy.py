@@ -96,7 +96,7 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.INFO)
 if DEBUG is True:
     ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -293,6 +293,8 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             self.upload_artifact(source_file=source_file, destination=destination)
 
     def upload_artifact(self, source_file: str, destination: dict):
+        logger.debug('\t source_file : {}'.format(source_file))
+        logger.debug('\t destination : {}'.format(json.dumps(destination, default=str)))
         import boto3
         import boto3.session
         session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
@@ -526,6 +528,18 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
     'aws': AwsCloudServiceProvider
 }
+SUPPLEMENTARY_FILES_FOR_UPLOAD = {
+    # Local File                                     Remote KEY
+    'tunnel_instance/etc/nginx/sites-enabled/admin': 'etc/nginx/sites-enabled/admin'
+}
+
+
+def upload_supplementary_files(sp_class_instance: CloudServiceProviderBase):
+    for local_file, key in SUPPLEMENTARY_FILES_FOR_UPLOAD.items():
+        destination = dict()
+        destination['bucket_name'] = sp_class_instance.args.artifact_location
+        destination['key'] = key
+        sp_class_instance.upload_artifact(source_file=local_file, destination=destination)
 
 
 def main():
@@ -534,6 +548,8 @@ def main():
         sp_class = SUPPORTED_CLOUD_SERVICE_PROVIDERS[args.target_cloud_sp]
         sp_class_instance: CloudServiceProviderBase
         sp_class_instance = sp_class(args=args)
+        logger.info('Uploading supplementary artifacts')
+        upload_supplementary_files(sp_class_instance=sp_class_instance)
         logger.info('Building packages and preparing artifacts')
         sp_class_instance.build()
         sp_class_instance.deploy()
