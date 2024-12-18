@@ -4,7 +4,7 @@ echo "MAIN SETUP START"
 
 echo "SQS Queue URL set to ${SQS_URL}"
 
-apt install nginx
+apt install -y nginx
 sleep 5
 systemctl stop nginx
 rm -vf /etc/nginx/sites-enabled/default
