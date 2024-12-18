@@ -529,8 +529,9 @@ SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
     'aws': AwsCloudServiceProvider
 }
 SUPPLEMENTARY_FILES_FOR_UPLOAD = {
-    # Local File                                     Remote KEY
-    'tunnel_instance/etc/nginx/sites-enabled/admin': 'etc/nginx/sites-enabled/admin'
+    # Local File                                        Remote KEY
+    'tunnel_instance/etc/nginx/sites-enabled/admin' :   'etc/nginx/sites-enabled/admin',
+    'tunnel_instance/var/www/html/index.html'       :   'var/www/html/index.html',
 }
 
 
