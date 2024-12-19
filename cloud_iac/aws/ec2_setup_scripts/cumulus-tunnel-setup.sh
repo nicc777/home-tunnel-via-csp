@@ -4,7 +4,7 @@ echo "MAIN SETUP START"
 
 echo "SQS Queue URL set to ${SQS_URL}"
 
-apt install -y nginx net-tools
+apt install -y nginx net-tools socat python3 python3-venv python3-boto3 python3-flask python3-fastapi
 sleep 5
 systemctl stop nginx
 rm -vf /etc/nginx/sites-enabled/default
