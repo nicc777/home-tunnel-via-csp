@@ -168,8 +168,16 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         if 'StackSummaries' in response:
             for stack_summary in response['StackSummaries']:
                 if 'StackName' in stack_summary:
-                    if stack_summary['StackName'] not in stack_names:
-                        stack_names.append(stack_summary['StackName'])
+                    if 'DELETE' not in stack_summary['StackStatus']:
+                        if stack_summary['StackName'] not in stack_names:
+                            stack_names.append(stack_summary['StackName'])
+                    else:
+                        logger.info(
+                            'Previous version of stack named "{}" found, but ignored as it is in a "{}" state.'.format(
+                                stack_summary['StackName'],
+                                stack_summary['StackStatus']
+                            )
+                        )
         return stack_names
 
     def validate_args(self):
@@ -381,6 +389,49 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             sleep_interval_seconds=sleep_interval_seconds
         )
 
+    def _wait_for_stack_create_status_complete(self, stack_name: str, next_token: str=None, try_count: int=0, max_tries: int=100, sleep_interval_seconds: int=10)->str:
+        counter = try_count + 1
+        if counter > max_tries:
+            raise Exception('Maximum attempts reached')
+        logger.info('Checking status... Try number {} (max={})'.format(counter, max_tries))
+        logger.debug('stack_name: {}'.format(stack_name))
+        import boto3
+        import boto3.session
+        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        client = session.client('cloudformation')
+        response = dict()
+        if next_token is not None:
+            response = client.describe_stacks(
+                StackName=stack_name,
+                NextToken=next_token
+            )
+        else:
+            response = client.describe_stacks(
+                StackName=stack_name
+            )
+        status = 'UNKNOWN'
+        if 'StackStatus' in response:
+            logger.info('\t StackStatus       : {}'.format(response['StackStatus']))
+            status = response['StackStatus']
+        if 'StackStatusReason' in response:
+            logger.info('\t StackStatusReason : {}'.format(response['StackStatusReason']))
+        if 'NextToken' in response:
+            logger.warning('Ignoring NextToken for now...')
+        if 'FAIL' in status:
+            raise Exception('Failed to create stack - please check the console for details.')
+        elif 'COMPLETE' in status:
+            logger.info('Stack created successfully')
+            return
+        logger.info('\t Sleeping for {} seconds'.format(sleep_interval_seconds))
+        time.sleep(sleep_interval_seconds)
+        self._wait_for_stack_create_status_complete(
+            stack_name=stack_name,
+            next_token=next_token,
+            try_count=counter,
+            max_tries=max_tries,
+            sleep_interval_seconds=sleep_interval_seconds
+        )
+
     def _create_cloudformation_new_stack(self):
         logger.info('Attempting to create a new CloudFormation Stack')
         template_url = 'https://{}.s3.{}.amazonaws.com/tunnel_resources.yaml'.format(
@@ -404,6 +455,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             OnFailure='DO_NOTHING'
         )
         logger.debug('response: {}'.format(json.dumps(response, default=str)))
+        self._wait_for_stack_create_status_complete(stack_name='cumulus-tunnel-event-resources')
 
     def _create_cloudformation_change_set(self):
         logger.info('Attempting to create a CloudFormation Change Set')
