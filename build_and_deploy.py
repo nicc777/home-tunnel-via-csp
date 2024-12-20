@@ -418,7 +418,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             logger.info('\t StackStatusReason : {}'.format(response['StackStatusReason']))
         if 'NextToken' in response:
             logger.warning('Ignoring NextToken for now...')
-        if 'FAIL' in status:
+        if 'FAIL' in status or 'DELETE' in status:
             raise Exception('Failed to create stack - please check the console for details.')
         elif 'COMPLETE' in status:
             logger.info('Stack created successfully')
