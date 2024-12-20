@@ -879,12 +879,13 @@ Resources:
         Value: 'cumulus-tunnel'
         PropagateAtLaunch: true
       TargetGroupARNs:
-      - !Ref CumulusTunnelTargetGroup
+      - !Ref CumulusTunnelHttpTargetGroup
+      - !Ref CumulusTunnelAdminTargetGroup
 
-  CumulusTunnelTargetGroup:
+  CumulusTunnelHttpTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
-      Name: !Ref ManagementDomainRecordParam
+      Name: cumulus-tunnel-http
       TargetType: 'instance'
       IpAddressType: 'ipv4'
       Protocol: 'HTTP'
@@ -957,7 +958,7 @@ Resources:
   CumulusTunnelListener443:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     DependsOn: 
-    - CumulusTunnelTargetGroup
+    - CumulusTunnelHttpTargetGroup
     - CumulusTunnelInstanceAutoscalingGroup
     Properties:
       Protocol: 'HTTPS'
@@ -970,14 +971,14 @@ Resources:
       - Type: 'forward'
         ForwardConfig:
           TargetGroups:
-          - TargetGroupArn: !Ref CumulusTunnelTargetGroup
+          - TargetGroupArn: !Ref CumulusTunnelHttpTargetGroup
             Weight: 1
 
   CumulusTunnelListener8081:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     DependsOn: 
-    - CumulusTunnelTargetGroup
     - CumulusTunnelInstanceAutoscalingGroup
+    - CumulusTunnelAdminTargetGroup
     Properties:
       Protocol: 'HTTPS'
       Port: 8081
