@@ -411,18 +411,30 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             )
         logger.debug('response: {}'.format(json.dumps(response, default=str)))
         status = 'UNKNOWN'
-        if 'StackStatus' in response:
-            logger.info('\t StackStatus       : {}'.format(response['StackStatus']))
-            status = response['StackStatus']
-        if 'StackStatusReason' in response:
-            logger.info('\t StackStatusReason : {}'.format(response['StackStatusReason']))
         if 'NextToken' in response:
             logger.warning('Ignoring NextToken for now...')
-        if 'FAIL' in status or 'DELETE' in status:
-            raise Exception('Failed to create stack - please check the console for details.')
-        elif 'COMPLETE' in status:
-            logger.info('Stack created successfully')
-            return
+        if 'Stacks' in response:
+            for stack in response['Stacks']:
+                if 'StackName' in stack:
+                    if stack['StackName'] == stack_name:
+                        if 'StackStatus' in stack:
+                            logger.info('\t StackStatus       : {}'.format(stack['StackStatus']))
+                            status = stack['StackStatus']
+                        else:
+                            logger.warning('Did NOT find "StackStatus" field in stack: {}'.format(json.dumps(stack, default=str)))
+                        if 'StackStatusReason' in stack:
+                            logger.info('\t StackStatusReason : {}'.format(stack['StackStatusReason']))
+                        if 'FAIL' in status or 'DELETE' in status:
+                            raise Exception('Failed to create stack - please check the console for details.')
+                        elif 'COMPLETE' in status:
+                            logger.info('Stack created successfully')
+                            return
+                    else:
+                        logger.warning('Ignoring stack named "{}"...'.format(stack['StackName']))
+                else:
+                    raise Exception('Expected the field "StackName" in stack: {}'.format(stack))
+        else:
+            raise Exception('Unrecognized response: {}'.format(response))
         logger.info('\t Sleeping for {} seconds'.format(sleep_interval_seconds))
         time.sleep(sleep_interval_seconds)
         self._wait_for_stack_create_status_complete(
