@@ -409,6 +409,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             response = client.describe_stacks(
                 StackName=stack_name
             )
+        logger.debug('response: {}'.format(json.dumps(response, default=str)))
         status = 'UNKNOWN'
         if 'StackStatus' in response:
             logger.info('\t StackStatus       : {}'.format(response['StackStatus']))

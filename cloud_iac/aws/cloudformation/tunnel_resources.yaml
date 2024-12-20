@@ -589,6 +589,30 @@ Resources:
       VpcId: !Ref VpcId1Param
       GroupName: cumulus-tunnel-instance-sg
 
+  TunnelInstanceSgIpv4Port80Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - TunnelInstanceAlbSecurityGroup
+          - GroupId
+      GroupId: !GetAtt TunnelInstanceSecurityGroup.GroupId
+
+  TunnelInstanceSgIpv4Port8081Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 8081
+      ToPort: 8081
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - TunnelInstanceAlbSecurityGroup
+          - GroupId
+      GroupId: !GetAtt TunnelInstanceSecurityGroup.GroupId
+
   TunnelInstanceSgIpv4Egress:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
