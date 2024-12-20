@@ -368,6 +368,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         elif execution_status == 'EXECUTE_COMPLETE' and status == 'CREATE_COMPLETE':
             logger.info('All changes applied successfully')
             return
+        elif 'FAIL' in execution_status or 'FAIL' in status:
+            logger.error('ChangeSet FAILED - check console for details')
+            raise Exception('ChangeSet FAILED - check console for details')
         logger.info('\t Sleeping for {} seconds'.format(sleep_interval_seconds))
         time.sleep(sleep_interval_seconds)
         self._wait_for_change_set_status_complete(
