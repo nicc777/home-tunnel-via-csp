@@ -901,6 +901,26 @@ Resources:
         HttpCode: '200'
       UnhealthyThresholdCount: 3
 
+  CumulusTunnelAdminTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: !Ref ManagementDomainRecordParam
+      TargetType: 'instance'
+      IpAddressType: 'ipv4'
+      Protocol: 'HTTP'
+      Port: 8081
+      VpcId: !Ref VpcId1Param
+      HealthCheckEnabled: True
+      HealthCheckProtocol: 'HTTP'
+      HealthCheckPort: 8081
+      HealthCheckPath: '/'
+      HealthCheckIntervalSeconds: 300
+      HealthCheckTimeoutSeconds: 120
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: '200'
+      UnhealthyThresholdCount: 3
+
   CumulusTunnelAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
@@ -951,6 +971,25 @@ Resources:
         ForwardConfig:
           TargetGroups:
           - TargetGroupArn: !Ref CumulusTunnelTargetGroup
+            Weight: 1
+
+  CumulusTunnelListener8081:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    DependsOn: 
+    - CumulusTunnelTargetGroup
+    - CumulusTunnelInstanceAutoscalingGroup
+    Properties:
+      Protocol: 'HTTPS'
+      Port: 8081
+      LoadBalancerArn: !Ref CumulusTunnelAlb
+      SslPolicy: 'ELBSecurityPolicy-TLS-1-2-Ext-2018-06'
+      Certificates:
+      - CertificateArn: !Ref DomainCertificateArnParam
+      DefaultActions:
+      - Type: 'forward'
+        ForwardConfig:
+          TargetGroups:
+          - TargetGroupArn: !Ref CumulusTunnelAdminTargetGroup
             Weight: 1
 
   CumulusTunnelDnsRecordSet:
