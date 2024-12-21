@@ -233,7 +233,7 @@ Resources:
   CumulusTunnelCommander:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.7
+      Runtime: python3.12
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: !Ref CumulusTunnelCommanderS3KeyParam
@@ -258,7 +258,7 @@ Resources:
   LambdaAuthorizer:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.7
+      Runtime: python3.12
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: !Ref CumulusTunnelApiAuthorizerS3KeyParam
