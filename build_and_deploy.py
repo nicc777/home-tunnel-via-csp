@@ -220,82 +220,54 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         )
 
     def _prep_cloud_serverless_functions(self):
+        FILES_TO_PACKAGE = {
+            'cloud_iac/aws/lambda_functions/handler_s3_object_created.py': {
+                'package_name': 'handler_s3_object_created',
+            },
+            'cloud_iac/aws/lambda_functions/handler_s3_object_delete.py': {
+                'package_name': 'handler_s3_object_delete',
+            },
+            'cloud_iac/aws/lambda_functions/handler_s3_object_expired.py': {
+                'package_name': 'handler_s3_object_expired',
+            },
+            'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_authorizer.py': {
+                'package_name': 'handler_cumulus_tunnel_authorizer',
+            },
+            'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_commander.py': {
+                'package_name': 'handler_cumulus_tunnel_commander',
+            },
+        }
+
+
         success = True
         artifacts_to_copy = dict()
-        try:
-            script_output = run_shell_script(
-                "bash",
-                "./scripts/package_lambda_function.sh",
-                "-f",
-                "cloud_iac/aws/lambda_functions/handler_s3_object_created.py",
-                "-p",
-                "handler_s3_object_created",
-            )
-            for line in script_output.split('\n'):
-                if 'Package File' in line:
-                    package_file = line.split(':')[1].strip()
-                    file_name = package_file.split(os.sep)[-1]
-                    logger.debug('Lambda Package:')
-                    logger.debug('\t package_file : {}'.format(package_file))
-                    logger.debug('\t file_name    : {}'.format(file_name))
-                    artifacts_to_copy[package_file] = dict()
-                    artifacts_to_copy[package_file]['bucket_name'] = self.args.artifact_location
-                    artifacts_to_copy[package_file]['key'] = file_name
-        except RuntimeError as e:
-            logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
-            success = False
-        if success is False:
-            raise Exception('Failed to run required lambda prep script "handler_s3_object_created"')
-        
-        try:
-            script_output = run_shell_script(
-                "bash",
-                "./scripts/package_lambda_function.sh",
-                "-f",
-                "cloud_iac/aws/lambda_functions/handler_s3_object_delete.py",
-                "-p",
-                "handler_s3_object_delete",
-            )
-            for line in script_output.split('\n'):
-                if 'Package File' in line:
-                    package_file = line.split(':')[1].strip()
-                    file_name = package_file.split(os.sep)[-1]
-                    logger.debug('Lambda Package:')
-                    logger.debug('\t package_file : {}'.format(package_file))
-                    logger.debug('\t file_name    : {}'.format(file_name))
-                    artifacts_to_copy[package_file] = dict()
-                    artifacts_to_copy[package_file]['bucket_name'] = self.args.artifact_location
-                    artifacts_to_copy[package_file]['key'] = file_name
-        except RuntimeError as e:
-            logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
-            success = False
-        if success is False:
-            raise Exception('Failed to run required lambda prep script "handler_s3_object_delete"')
-        
-        try:
-            script_output = run_shell_script(
-                "bash",
-                "./scripts/package_lambda_function.sh",
-                "-f",
-                "cloud_iac/aws/lambda_functions/handler_s3_object_expired.py",
-                "-p",
-                "handler_s3_object_expired",
-            )
-            for line in script_output.split('\n'):
-                if 'Package File' in line:
-                    package_file = line.split(':')[1].strip()
-                    file_name = package_file.split(os.sep)[-1]
-                    logger.debug('Lambda Package:')
-                    logger.debug('\t package_file : {}'.format(package_file))
-                    logger.debug('\t file_name    : {}'.format(file_name))
-                    artifacts_to_copy[package_file] = dict()
-                    artifacts_to_copy[package_file]['bucket_name'] = self.args.artifact_location
-                    artifacts_to_copy[package_file]['key'] = file_name
-        except RuntimeError as e:
-            logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
-            success = False
-        if success is False:
-            raise Exception('Failed to run required lambda prep script "handler_s3_object_expired"')
+
+        for source_file, source_file_metadata in FILES_TO_PACKAGE.items():
+            package_name = source_file_metadata['package_name']
+            try:
+                script_output = run_shell_script(
+                    "bash",
+                    "./scripts/package_lambda_function.sh",
+                    "-f",
+                    source_file,
+                    "-p",
+                    package_name,
+                )
+                for line in script_output.split('\n'):
+                    if 'Package File' in line:
+                        package_file = line.split(':')[1].strip()
+                        file_name = package_file.split(os.sep)[-1]
+                        logger.debug('Lambda Package:')
+                        logger.debug('\t package_file : {}'.format(package_file))
+                        logger.debug('\t file_name    : {}'.format(file_name))
+                        artifacts_to_copy[package_file] = dict()
+                        artifacts_to_copy[package_file]['bucket_name'] = self.args.artifact_location
+                        artifacts_to_copy[package_file]['key'] = file_name
+            except RuntimeError as e:
+                logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+                success = False
+            if success is False:
+                raise Exception('Failed to run required lambda prep script "handler_s3_object_created"')
         
         for source_file, destination in artifacts_to_copy.items():
             self.upload_artifact(source_file=source_file, destination=destination)

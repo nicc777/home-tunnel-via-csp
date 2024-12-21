@@ -34,6 +34,16 @@ Parameters:
     MinLength: 1
     Default: "handler_s3_object_expired.zip"
 
+  CumulusTunnelCommanderS3KeyParam:
+    Type: 'String'
+    MinLength: 1
+    Default: "handler_cumulus_tunnel_commander.zip"
+
+  CumulusTunnelApiAuthorizerS3KeyParam:
+    Type: 'String'
+    MinLength: 1
+    Default: "handler_cumulus_tunnel_authorizer.zip"
+
   VpcId1Param:
     Type: 'String'
     MinLength: 1
@@ -98,6 +108,293 @@ Parameters:
 #######################################################################################################################
 
 Resources:
+
+  ########################################
+  ###
+  ### API GATEWAY - REST API
+  ###
+  ########################################
+
+  # Original source for the API gateway example: https://gist.github.com/carceneaux/7a5ef7439a7dc514b8da61fe929df5cavvvvvvv
+
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub ${AWS::StackName}-api
+      Description: !Sub API for the ${AWS::StackName} CloudFormation stack.
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub ${AWS::StackName}-api-key
+      Description: API Key V1
+      Enabled: true
+      GenerateDistinctId: false
+  ApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages: 
+      - ApiId: !Ref ApiGateway
+        Stage: !Ref ApiStage     
+      Description: !Sub ${AWS::StackName} usage plan
+      Quota:
+        Limit: 2000
+        Period: MONTH
+      Throttle:
+        BurstLimit: 10
+        RateLimit: 10
+      UsagePlanName: !Sub ${AWS::StackName}-usage-plan
+  ApiUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlan
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref ApiDeployment
+      RestApiId: !Ref ApiGateway
+      StageName: cumulus-tunnel
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - ApiProxyResourceGET
+    Properties:
+      RestApiId: !Ref ApiGateway
+  ApiProxyResourceROOT:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: command
+  ApiProxyResourceGET:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiProxyResourceROOT
+      HttpMethod: POST  
+      ApiKeyRequired: true    
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CumulusTunnelCommander.Arn}/invocations
+  ApiProxyResourceOPTIONS:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiProxyResourceROOT
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        IntegrationResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,authorizationtoken'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: '200'
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ApiAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: !Sub ${AWS::StackName}-LambdaAuthorizer
+      RestApiId: !Ref ApiGateway
+      Type: REQUEST
+      AuthorizerUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAuthorizer.Arn}/invocations
+      AuthorizerResultTtlInSeconds: 0
+      IdentitySource: 'method.request.header.authorizationtoken, method.request.header.origin'
+
+  # Lambda Configuration
+  LambdaRetrieverLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: CumulusTunnelCommander
+    Properties:
+      LogGroupName:
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: CumulusTunnelCommander
+      RetentionInDays: 7
+
+  CumulusTunnelCommander:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.7
+      Code:
+        S3Bucket: !Ref ArtifactBucketNameParam
+        S3Key: !Ref CumulusTunnelCommanderS3KeyParam
+      Role: !GetAtt LambdaRetrieverIAMRole.Arn
+      Handler: lambda-parameter-retrieval.lambda_handler
+      FunctionName: cumulus-tunnel-commander
+      Description: Process the Cumulus Tunnel command
+      MemorySize: 128
+      Timeout: 3
+  
+  LambdaAuthorizerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: LambdaAuthorizer
+    Properties:
+      LogGroupName:
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: LambdaAuthorizer
+      RetentionInDays: 7
+
+  LambdaAuthorizer:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.7
+      Code:
+        S3Bucket: !Ref ArtifactBucketNameParam
+        S3Key: !Ref CumulusTunnelApiAuthorizerS3KeyParam
+      Role: !GetAtt LambdaAuthorizerIAMRole.Arn
+      Handler: lambda-authorizer-vcd-plugins.lambda_handler
+      FunctionName: !Sub ${AWS::StackName}-authorizer
+      Description: API Gateway custom authorizer - Validates incoming source has required permissions to make API request.
+      MemorySize: 256
+      Timeout: 5
+  
+  # Permissions Configuration
+  LambdaRetrieverIAMRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+        - Effect: Allow
+          Principal: 
+            Service: 
+            - lambda.amazonaws.com
+          Action: 
+          - sts:AssumeRole
+      Policies:  
+      - PolicyName: !Sub ${AWS::StackName}-logs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      # TODO Add SQS permissions
+
+  LambdaAuthorizerIAMRole: 
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: 2012-10-17
+        Statement: 
+        - Effect: Allow
+          Principal: 
+            Service: 
+            - lambda.amazonaws.com
+          Action: 
+          - sts:AssumeRole
+      Policies:  
+      - PolicyName: !Sub ${AWS::StackName}-logs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+
+  ApiGatewayInvokeRetriever:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CumulusTunnelCommander.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/*
+
+  ApiGatewayInvokeAuhorizer:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaAuthorizer.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*
+
+  ApiGatewayLogsIAMRole: 
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+        - Effect: Allow
+          Principal: 
+            Service: 
+            - apigateway.amazonaws.com
+          Action: 
+          - sts:AssumeRole
+      Path: /
+      Policies: 
+        - PolicyName: AmazonAPIGatewayPushToCloudWatchLogs
+          PolicyDocument: 
+            Version: '2012-10-17'
+            Statement: 
+            - Effect: Allow
+              Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:PutLogEvents
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+              Resource: '*'
+
+  # API Gateway CloudWatch Logs Initial Configuration
+  ApiGatewayLogs:
+    Type: AWS::ApiGateway::Account
+    Properties: 
+      CloudWatchRoleArn: !GetAtt ApiGatewayLogsIAMRole.Arn
+
+
+  ########################################
+  ###
+  ### DYNAMODB
+  ###
+  ########################################
+
+  CumulusTunnelDynamodbTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: cumulus-tunnel
+      AttributeDefinitions:
+      # Agent requests are stored in "agent-xxx.json" keys
+      # Resource server requests are stored in "server-xxx.json" keys
+      
+      - AttributeName: "ObjKey"
+        AttributeType: "S"
+      - AttributeName: "ObjCreateTimeStamp"
+        AttributeType: "N"
+      KeySchema:
+      - AttributeName: "ObjKey"
+        KeyType: "HASH"
+      - AttributeName: "ObjCreateTimeStamp"
+        KeyType: "RANGE"
+      BillingMode: PAY_PER_REQUEST
 
   ########################################
   ###
@@ -1063,4 +1360,14 @@ Outputs:
     Export:
       Name: 'CumulusTunnelInstanceAutoscalingGroupName'
 
+
+  ApiUrl:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'https://'
+        - !Ref ApiGateway
+        - '.execute-api.'
+        - !Sub ${AWS::Region}
+        - '.amazonaws.com/cumulus-tunnel/command'
   
