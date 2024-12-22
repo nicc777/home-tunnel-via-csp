@@ -29,6 +29,16 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 
+def format_response(status_code: int=200, body: dict=dict()):
+    return {
+        "isBase64Encoded": False,
+        "statusCode": status_code,
+        "headers": {},
+        "multiValueHeaders": {},
+        "body": json.dumps(body, default=str)
+    }
+
+
 def lambda_handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
-    return json.dumps({'result': 'ok'})
+    return format_response(status_code=201, body={'message': 'It Worked!'})
