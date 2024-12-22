@@ -238,7 +238,7 @@ Resources:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: !Ref CumulusTunnelCommanderS3KeyParam
       Role: !GetAtt LambdaRetrieverIAMRole.Arn
-      Handler: lambda-parameter-retrieval.lambda_handler
+      Handler: handler_cumulus_tunnel_commander.lambda_handler
       FunctionName: cumulus-tunnel-commander
       Description: Process the Cumulus Tunnel command
       MemorySize: 128
@@ -263,7 +263,7 @@ Resources:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: !Ref CumulusTunnelApiAuthorizerS3KeyParam
       Role: !GetAtt LambdaAuthorizerIAMRole.Arn
-      Handler: lambda-authorizer-vcd-plugins.lambda_handler
+      Handler: handler_cumulus_tunnel_authorizer.lambda_handler
       FunctionName: !Sub ${AWS::StackName}-authorizer
       Description: API Gateway custom authorizer - Validates incoming source has required permissions to make API request.
       MemorySize: 256
