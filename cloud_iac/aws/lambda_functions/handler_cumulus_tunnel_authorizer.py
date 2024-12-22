@@ -12,6 +12,7 @@ import traceback
 
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
+SECRET_ARN = os.getenv('SECRET_ARN', '')
 
 
 logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
@@ -33,8 +34,25 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 
+def get_secret()->str:
+    try:
+        client = boto3.client('secretsmanager')
+        secret_id = SECRET_ARN.split('/')[-1]
+        response = client.get_secret_value(SecretId=secret_id)
+        return '{}'.format(response['SecretString'])
+    except:
+        logger.error('Failed to retrieve secret value')
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+    return ''
+
+
 def lambda_handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
+    required_token_value = get_secret()
+    logger.debug('required_token_value LEN = {}'.format(len(required_token_value)))
+    if len(required_token_value) < 8:
+        logger.error('unauthorized - Invalid token length from SecretsManager')
+        raise Exception('Unauthorized')
 
     # Retrieve request parameters from the Lambda function input:
     headers = event['headers']
@@ -66,20 +84,23 @@ def lambda_handler(event, context):
     if (apiGatewayArnTmp[3]):
         resource += apiGatewayArnTmp[3]
 
+    origin_token = headers['authorizationtoken']
+    origin_value = headers['origin']
+
     # Perform authorization to return the Allow policy for correct parameters
     # and the 'Unauthorized' error, otherwise.
 
-    # if (headers['HeaderAuth1'] == "headerValue1" and queryStringParameters['QueryString1'] == "queryValue1" and stageVariables['StageVar1'] == "stageValue1"):
-    #     response = generateAllow('me', event['methodArn'])
-    #     logger.info('authorized')
-    #     return response
-    # else:
-    #     logger.error('unauthorized')
-    #     raise Exception('Unauthorized') # Return a 401 Unauthorized response
+    if origin_token == required_token_value and origin_value in ('agent', 'resource',):
+        response = generateAllow('me', event['methodArn'])
+        logger.info('authorized')
+        return response
+    else:
+        logger.error('unauthorized')
+        raise Exception('Unauthorized') # Return a 401 Unauthorized response
 
-    response = generateAllow('me', event['methodArn'])
-    logger.warning('authorized without actual checks')
-    return response
+    # response = generateAllow('me', event['methodArn'])
+    # logger.warning('authorized without actual checks')
+    # return response
 
     # Help function to generate IAM policy
 

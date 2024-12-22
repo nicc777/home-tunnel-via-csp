@@ -254,7 +254,7 @@ Resources:
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: !Ref CumulusTunnelCommanderS3KeyParam
-      Role: !GetAtt LambdaRetrieverIAMRole.Arn
+      Role: !GetAtt ApiGwLambdaRole.Arn
       Handler: handler_cumulus_tunnel_commander.lambda_handler
       FunctionName: cumulus-tunnel-commander
       Description: Process the Cumulus Tunnel command
@@ -277,6 +277,7 @@ Resources:
 
   LambdaAuthorizer:
     Type: AWS::Lambda::Function
+    DependsOn: CumulusTunnelAuthTokenSecret
     Properties:
       Runtime: python3.12
       Code:
@@ -291,9 +292,10 @@ Resources:
       Environment:
         Variables:
           DEBUG: !Ref DebugParam
+          SECRET_ARN: !Ref CumulusTunnelAuthTokenSecret
   
   # Permissions Configuration
-  LambdaRetrieverIAMRole:
+  ApiGwLambdaRole:
     Type: AWS::IAM::Role
     Properties: 
       AssumeRolePolicyDocument: 
@@ -320,6 +322,7 @@ Resources:
 
   LambdaAuthorizerIAMRole: 
     Type: AWS::IAM::Role
+    DependsOn: CumulusTunnelAuthTokenSecret
     Properties: 
       AssumeRolePolicyDocument: 
         Version: 2012-10-17
@@ -341,8 +344,17 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             Resource: arn:aws:logs:*:*:*
+      - PolicyName: !Sub ${AWS::StackName}-logs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: 
+            - 'secretsmanager:GetSecretValue'
+            - 'secretsmanager:DescribeSecret'
+            Resource: !Ref CumulusTunnelAuthTokenSecret
 
-  ApiGatewayInvokeRetriever:
+  ApiGatewayInvokeCommand:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -350,7 +362,7 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/*
 
-  ApiGatewayInvokeAuhorizer:
+  ApiGatewayInvokeAuthorizer:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
