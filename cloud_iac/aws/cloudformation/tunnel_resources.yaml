@@ -150,9 +150,25 @@ Resources:
       KeyId: !Ref ApiKey
       KeyType: API_KEY
       UsagePlanId: !Ref ApiUsagePlan
+  ApiStageLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: ApiGateway
+    Properties:
+      LogGroupName:
+        Fn::Join:
+        - ''
+        - - "/aws/apigateway/"
+          - Ref: ApiGateway
+          - "/command"
+      RetentionInDays: 7
   ApiStage:
     Type: AWS::ApiGateway::Stage
+    DependsOn: ApiStageLogGroup
     Properties:
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiStageLogGroup.Arn
+        # See https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-logging-variables.html
+        Format: "$context.requestId $context.requestTime $context.status $context.identity.sourceIp $context.authorizer.principalId $context.identity.userAgent $context.integration.latency $context.integration.status $context.integration.integrationStatus $context.integrationErrorMessage"
       DeploymentId: !Ref ApiDeployment
       RestApiId: !Ref ApiGateway
       StageName: cumulus-tunnel
