@@ -129,6 +129,7 @@ Resources:
       Description: API Key V1
       Enabled: true
       GenerateDistinctId: false
+      # Usage: # curl -d "key1=value1&key2=value2" --header "x-api-key: abc123" -X POST https://12abcde45.execute-api.us-west-1.amazonaws.com/prod/create
   ApiUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
     Properties:
@@ -243,6 +244,9 @@ Resources:
       Description: Process the Cumulus Tunnel command
       MemorySize: 128
       Timeout: 3
+      Environment:
+        Variables:
+          DEBUG: !Ref DebugParam
   
   LambdaAuthorizerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -268,6 +272,9 @@ Resources:
       Description: API Gateway custom authorizer - Validates incoming source has required permissions to make API request.
       MemorySize: 256
       Timeout: 5
+      Environment:
+        Variables:
+          DEBUG: !Ref DebugParam
   
   # Permissions Configuration
   LambdaRetrieverIAMRole:

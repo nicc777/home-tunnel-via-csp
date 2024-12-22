@@ -52,19 +52,34 @@ def lambda_handler(event, context):
     method = apiGatewayArnTmp[2]
     resource = '/'
 
+    logger.debug('VAR headers               : {}'.format(json.dumps(headers, default=str)))
+    logger.debug('VAR queryStringParameters : {}'.format(json.dumps(queryStringParameters, default=str)))
+    logger.debug('VAR pathParameters        : {}'.format(json.dumps(pathParameters, default=str)))
+    logger.debug('VAR stageVariables        : {}'.format(json.dumps(stageVariables, default=str)))
+    logger.debug('VAR awsAccountId          : {}'.format(awsAccountId))
+    logger.debug('VAR region                : {}'.format(region))
+    logger.debug('VAR restApiId             : {}'.format(restApiId))
+    logger.debug('VAR stage                 : {}'.format(stage))
+    logger.debug('VAR method                : {}'.format(method))
+    logger.debug('VAR resource              : {}'.format(resource))
+    
     if (apiGatewayArnTmp[3]):
         resource += apiGatewayArnTmp[3]
 
     # Perform authorization to return the Allow policy for correct parameters
     # and the 'Unauthorized' error, otherwise.
 
-    if (headers['HeaderAuth1'] == "headerValue1" and queryStringParameters['QueryString1'] == "queryValue1" and stageVariables['StageVar1'] == "stageValue1"):
-        response = generateAllow('me', event['methodArn'])
-        logger.info('authorized')
-        return response
-    else:
-        logger.error('unauthorized')
-        raise Exception('Unauthorized') # Return a 401 Unauthorized response
+    # if (headers['HeaderAuth1'] == "headerValue1" and queryStringParameters['QueryString1'] == "queryValue1" and stageVariables['StageVar1'] == "stageValue1"):
+    #     response = generateAllow('me', event['methodArn'])
+    #     logger.info('authorized')
+    #     return response
+    # else:
+    #     logger.error('unauthorized')
+    #     raise Exception('Unauthorized') # Return a 401 Unauthorized response
+
+    response = generateAllow('me', event['methodArn'])
+    logger.warning('authorized without actual checks')
+    return response
 
     # Help function to generate IAM policy
 
