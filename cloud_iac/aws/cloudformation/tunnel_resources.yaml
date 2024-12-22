@@ -334,7 +334,7 @@ Resources:
           Action: 
           - sts:AssumeRole
       Policies:  
-      - PolicyName: !Sub ${AWS::StackName}-logs
+      - PolicyName: !Sub ${AWS::StackName}-authz-logs
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -344,7 +344,7 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             Resource: arn:aws:logs:*:*:*
-      - PolicyName: !Sub ${AWS::StackName}-logs
+      - PolicyName: !Sub ${AWS::StackName}-authz-secretsmanager
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
