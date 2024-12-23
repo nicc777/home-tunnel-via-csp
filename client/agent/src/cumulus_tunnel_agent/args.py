@@ -3,6 +3,7 @@ import socket
 import traceback
 import os
 import json
+import copy
 from pathlib import Path
 
 
@@ -23,19 +24,22 @@ class RuntimeOptions:
         self.update_interval_seconds = 86400
         self.extra_ip_addresses = list()
         self.run_as_service = True
-        self.destination = ''
         self.nat_check = True
         self.agent_name = socket.gethostname()
         self.tcp_ports = list()
         self.api_url = None
         self.api_headers = dict()
+        self.api_config = dict()
+        self.relay_id = 'default'
 
     def load_api_configuration(self, config_file: str):
         with open(config_file, 'r') as f:
             data_json = f.read()
         data = json.loads(data_json)
-        self.api_url = data['ApiUrl']
-        self.api_headers = data['Headers']
+        self.api_config = copy.deepcopy(data)
+        self.api_url = copy.deepcopy(data['ApiUrl'])
+        self.api_headers = copy.deepcopy(data['Headers'])
+        self.api_headers['origin'] = 'agent'
 
     def get_agent_key_name(self)->str:
         return 'agent-{}.json'.format(self.agent_name)
@@ -88,15 +92,6 @@ parser.add_argument(
     required=False
 )
 parser.add_argument(
-    '--dest',
-    help='The destination. Only S3 is supported and therefore whatever value is set here will for now be assumed to be an S3 bucket',
-    action='store',
-    type=str,
-    dest='destination',
-    default='',
-    required=False
-)
-parser.add_argument(
     '--identifier',
     help='I name for this agent (and system)',
     action='store',
@@ -123,6 +118,15 @@ parser.add_argument(
     default='{}{}.cumulus_tunnel_api.json'.format(Path.home(), os.sep),
     required=False
 )
+parser.add_argument(
+    '--relay-id',
+    help='The identifier of the relay server. If none is selected, the "default" server will be targeted. Firewall rules will be added to the security group for this server.',
+    action='store',
+    type=str,
+    dest='relay_id',
+    default='default',
+    required=False
+)
 
 
 args = parser.parse_args()
@@ -135,6 +139,8 @@ if os.path.exists(args.api_config_file_path) is False:
     raise Exception('API Configuration File Not Found: {}'.format(args.api_config_file_path))
 runtime_options.load_api_configuration(config_file=args.api_config_file_path)
 
+runtime_options.relay_id = '{}'.format(args.relay_id)
+
 try:
     if len(args.ip_addresses) > 0:
         addresses = args.ip_addresses.split(',')
@@ -145,8 +151,6 @@ except:
     pass
 if args.run_once is True:
     runtime_options.run_as_service = False
-if len(args.destination) > 0:
-    runtime_options.destination = '{}'.format(args.destination)
 if len(args.agent_identifier) > 0:
     runtime_options.agent_name = '{}'.format(args.agent_identifier)
 
