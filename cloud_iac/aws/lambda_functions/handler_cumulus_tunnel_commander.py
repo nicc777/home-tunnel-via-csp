@@ -38,7 +38,25 @@ def format_response(status_code: int=200, body: dict=dict()):
         "body": json.dumps(body, default=str)
     }
 
+def get_command_agent_context(event)->str:
+    if 'headers' not in event:
+        logger.error('Invalid event data. Expected key "headers" not found')
+        raise Exception('Invalid event data. Expected key "headers" not found')
+    headers = event['headers']
+    if 'origin' not in headers:
+        logger.error('Expected header "origin" not found')
+        raise Exception('Expected header "origin" not found')
+    return '{}'.format(headers['origin'])
+
 
 def lambda_handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
+
+    try:
+        client_context = get_command_agent_context(event=event)
+        logger.info('Client Context: {}'.format(client_context))
+    except:
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        return format_response(status_code=599, body={'error': 'Failed to determine context'})
+
     return format_response(status_code=201, body={'message': 'It Worked!'})
