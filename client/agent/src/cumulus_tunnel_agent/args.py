@@ -1,6 +1,9 @@
 import argparse
 import socket
 import traceback
+import os
+import json
+from pathlib import Path
 
 
 DEFAULT_PORTS = "80,443"
@@ -24,6 +27,15 @@ class RuntimeOptions:
         self.nat_check = True
         self.agent_name = socket.gethostname()
         self.tcp_ports = list()
+        self.api_url = None
+        self.api_headers = dict()
+
+    def load_api_configuration(self, config_file: str):
+        with open(config_file, 'r') as f:
+            data_json = f.read()
+        data = json.loads(data_json)
+        self.api_url = data['ApiUrl']
+        self.api_headers = data['Headers']
 
     def get_agent_key_name(self)->str:
         return 'agent-{}.json'.format(self.agent_name)
@@ -102,12 +114,27 @@ parser.add_argument(
     default=DEFAULT_PORTS,
     required=False
 )
+parser.add_argument(
+    '--api-config',
+    help='The path to the API configuration file (JSON format)',
+    action='store',
+    type=str,
+    dest='api_config_file_path',
+    default='{}{}.cumulus_tunnel_api.json'.format(Path.home(), os.sep),
+    required=False
+)
 
 
 args = parser.parse_args()
 
+
 runtime_options.debug = args.verbose
 runtime_options.update_interval_seconds = int(args.update_interval_seconds)
+
+if os.path.exists(args.api_config_file_path) is False:
+    raise Exception('API Configuration File Not Found: {}'.format(args.api_config_file_path))
+runtime_options.load_api_configuration(config_file=args.api_config_file_path)
+
 try:
     if len(args.ip_addresses) > 0:
         addresses = args.ip_addresses.split(',')

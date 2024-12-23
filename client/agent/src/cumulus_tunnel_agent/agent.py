@@ -275,6 +275,8 @@ def generate_extra_ip_address_data()->dict:
 
 def agent_main():
     logger.info('starting')
+    logger.info('API URL set to: {}'.format(runtime_options.api_url))
+    logger.info('  Number of API headers set: {}'.format(len(runtime_options.api_headers)))
     do_loop = True
     while do_loop:
         logger.info('Main loop running')
