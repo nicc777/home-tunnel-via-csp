@@ -1395,7 +1395,6 @@ Outputs:
     Export:
       Name: 'CumulusTunnelInstanceAutoscalingGroupName'
 
-
   ApiUrl:
     Value:
       Fn::Join:
@@ -1405,4 +1404,6 @@ Outputs:
         - '.execute-api.'
         - !Sub ${AWS::Region}
         - '.amazonaws.com/cumulus-tunnel/command'
+    Export:
+      Name: CumulusTunnelApiUrl
   

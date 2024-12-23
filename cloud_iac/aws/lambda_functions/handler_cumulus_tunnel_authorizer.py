@@ -6,9 +6,9 @@ import logging
 import os
 import sys
 import json
-import copy
 import boto3
 import traceback
+import base64
 
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
@@ -48,8 +48,13 @@ def get_secret()->str:
 
 def lambda_handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
-    required_token_value = get_secret()
-    logger.debug('required_token_value LEN = {}'.format(len(required_token_value)))
+    retrieved_secret_json = get_secret()
+
+    secret_data = json.loads(retrieved_secret_json)
+    authorizer_string = '{}:{}'.format(secret_data['username'], secret_data['password'])
+    required_token_value = base64.b64encode(authorizer_string.encode('utf-8')).decode('utf-8')
+
+    logger.debug('required_token_value LEN = {}'.format(len(retrieved_secret_json)))
     if len(required_token_value) < 8:
         logger.error('unauthorized - Invalid token length from SecretsManager')
         raise Exception('Unauthorized')
@@ -90,6 +95,8 @@ def lambda_handler(event, context):
     # Perform authorization to return the Allow policy for correct parameters
     # and the 'Unauthorized' error, otherwise.
 
+    logger.debug('Comparing tokens: "{}" vs "{}"'.format(origin_token, required_token_value))
+    logger.debug('Comparing origin: "{}" in ("agent", "resource")'.format(origin_value))
     if origin_token == required_token_value and origin_value in ('agent', 'resource',):
         response = generateAllow('me', event['methodArn'])
         logger.info('authorized')
