@@ -49,14 +49,44 @@ def get_command_agent_context(event)->str:
     return '{}'.format(headers['origin'])
 
 
+def get_command_body(event)->dict:
+    if 'body' not in event:
+        logger.error('Invalid event data. Expected key "body" not found')
+        raise Exception('Invalid event data. Expected key "body" not found')
+    return json.loads(event['body'])
+
+
+def validate_agent_command(command_body: dict):
+    logger.debug('Validating AGENT command: {}'.format(json.dumps(command_body, default=str)))
+    return
+
+
+def validate_resource_server_command(command_body: dict):
+    logger.debug('Validating RESOURCE SERVER command: {}'.format(json.dumps(command_body, default=str)))
+    return
+
+
+def parse_event(event):
+    client_context = get_command_agent_context(event=event)
+    command_body = get_command_body(event=event)
+    
+    if client_context == 'agent':
+        validate_agent_command(command_body=command_body)
+    else:
+        validate_resource_server_command(command_body=command_body)
+
+    return client_context, command_body
+
+
 def lambda_handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
-
+    
+    client_context = None
+    command_body = None
     try:
-        client_context = get_command_agent_context(event=event)
-        logger.info('Client Context: {}'.format(client_context))
+        client_context, command_body = parse_event(event=event)
     except:
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
-        return format_response(status_code=599, body={'error': 'Failed to determine context'})
+        return format_response(status_code=599, body={'error': 'Command Instruction Failed'})
 
     return format_response(status_code=201, body={'message': 'It Worked!'})
