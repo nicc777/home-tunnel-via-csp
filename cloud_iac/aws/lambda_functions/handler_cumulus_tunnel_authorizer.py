@@ -89,7 +89,7 @@ def lambda_handler(event, context):
     if (apiGatewayArnTmp[3]):
         resource += apiGatewayArnTmp[3]
 
-    origin_token = headers['authorizationtoken']
+    origin_token = headers['x-cumulus-tunnel-credentials']
     origin_value = headers['origin']
 
     # Perform authorization to return the Allow policy for correct parameters

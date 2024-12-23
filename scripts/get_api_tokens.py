@@ -157,7 +157,7 @@ def main():
     secret_data = json.loads(secret_value)
     authorizer_string = '{}:{}'.format(secret_data['username'], secret_data['password'])
     base64_string = base64.b64encode(authorizer_string.encode('utf-8')).decode('utf-8')
-    logger.info('HEADER authorizationtoken: {}'.format(base64_string))
+    logger.info('HEADER x-cumulus-tunnel-credentials: {}'.format(base64_string))
     exports = get_exports()
     logger.debug('exports: {}'.format(json.dumps(exports)))
     api_url = get_api_gw_url(exports=exports)
@@ -165,7 +165,7 @@ def main():
     test_payload = {
         'echo': 'test',
     }
-    test_url = 'curl -X POST -d \'{}\' --header "x-api-key: {}" --header "authorizationtoken: {}" --header "origin: agent" {}'.format(
+    test_url = 'curl -X POST -d \'{}\' --header "x-api-key: {}" --header "x-cumulus-tunnel-credentials: {}" --header "origin: agent" {}'.format(
         json.dumps(test_payload, default=str),
         api_gateway_stage_token,
         base64_string,
@@ -179,7 +179,7 @@ def main():
         'ApiUrl': api_url,
         'Headers': {
             'x-api-key': api_gateway_stage_token,
-            'authorizationtoken': base64_string,
+            'x-cumulus-tunnel-credentials': base64_string,
         },
     }
     with open(config_file, 'w') as f:

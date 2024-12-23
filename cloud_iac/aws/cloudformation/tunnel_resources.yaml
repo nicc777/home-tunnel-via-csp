@@ -208,7 +208,7 @@ Resources:
         IntegrationResponses:
         - StatusCode: '200'
           ResponseParameters:
-            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,authorizationtoken'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,x-cumulus-tunnel-credentials'"
             method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
             method.response.header.Access-Control-Allow-Origin: "'*'"
           ResponseTemplates:
@@ -233,7 +233,7 @@ Resources:
       Type: REQUEST
       AuthorizerUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAuthorizer.Arn}/invocations
       AuthorizerResultTtlInSeconds: 0
-      IdentitySource: 'method.request.header.authorizationtoken, method.request.header.origin'
+      IdentitySource: 'method.request.header.x-cumulus-tunnel-credentials, method.request.header.origin'
 
   # Lambda Configuration
   LambdaRetrieverLogGroup:
