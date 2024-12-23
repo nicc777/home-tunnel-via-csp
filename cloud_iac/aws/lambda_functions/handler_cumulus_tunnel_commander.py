@@ -89,4 +89,8 @@ def lambda_handler(event, context):
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
         return format_response(status_code=599, body={'error': 'Command Instruction Failed'})
 
+    if 'echo' in command_body:
+        logger.info('ECHO command - returning to the client with the submitted text')
+        return format_response(status_code=201, body={'echo-response': '{}'.format(command_body['echo'])})
+
     return format_response(status_code=201, body={'message': 'It Worked!'})
