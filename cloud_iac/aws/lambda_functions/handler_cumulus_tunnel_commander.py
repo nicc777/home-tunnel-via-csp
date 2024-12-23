@@ -58,12 +58,13 @@ def get_command_body(event)->dict:
 
 def validate_agent_command(command_body: dict):
     logger.debug('Validating AGENT command: {}'.format(json.dumps(command_body, default=str)))
-    return
+    for key in ('NatAddressData', 'ExtraIpAddressData', 'AgentId', 'RelayId'):
+        if key not in command_body:
+            raise Exception('Key "{}" not found in agent submitted data. Cannot proceed.')
 
 
 def validate_resource_server_command(command_body: dict):
     logger.debug('Validating RESOURCE SERVER command: {}'.format(json.dumps(command_body, default=str)))
-    return
 
 
 def parse_event(event):
@@ -78,6 +79,16 @@ def parse_event(event):
     return client_context, command_body
 
 
+def process_agent_command(command_body: dict):
+    
+    return format_response(status_code=201, body={'agent-command-response': 'success'})
+
+
+def process_resource_server_command(command_body: dict):
+    
+    return format_response(status_code=201, body={'resource-server-command-response': 'success'})
+
+
 def lambda_handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     
@@ -85,12 +96,15 @@ def lambda_handler(event, context):
     command_body = None
     try:
         client_context, command_body = parse_event(event=event)
+        if client_context is not None:
+            if client_context == 'agent':
+                return process_agent_command(command_body=command_body)
+            else:
+                return process_resource_server_command(command_body=command_body)
+        elif 'echo' in command_body:
+            logger.info('ECHO command - returning to the client with the submitted text')
+            return format_response(status_code=201, body={'echo-response': '{}'.format(command_body['echo'])})
     except:
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
-        return format_response(status_code=599, body={'error': 'Command Instruction Failed'})
 
-    if 'echo' in command_body:
-        logger.info('ECHO command - returning to the client with the submitted text')
-        return format_response(status_code=201, body={'echo-response': '{}'.format(command_body['echo'])})
-
-    return format_response(status_code=201, body={'message': 'It Worked!'})
+    return format_response(status_code=599, body={'error': 'Command Instruction Failed'})
