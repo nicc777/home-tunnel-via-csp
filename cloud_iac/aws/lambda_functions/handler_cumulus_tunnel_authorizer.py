@@ -98,7 +98,7 @@ def lambda_handler(event, context):
     logger.debug('Comparing tokens: "{}" vs "{}"'.format(origin_token, required_token_value))
     logger.debug('Comparing origin: "{}" in ("agent", "resource")'.format(origin_value))
     if origin_token == required_token_value and origin_value in ('agent', 'resource',):
-        response = generateAllow('me', event['methodArn'])
+        response = generateAllow(origin_value, event['methodArn'])
         logger.info('authorized')
         return response
     else:
@@ -127,9 +127,7 @@ def generatePolicy(principalId, effect, resource):
         authResponse['policyDocument'] = policyDocument
 
     authResponse['context'] = {
-        "stringKey": "stringval",
-        "numberKey": 123,
-        "booleanKey": True
+        "origin": principalId,
     }
 
     return authResponse
