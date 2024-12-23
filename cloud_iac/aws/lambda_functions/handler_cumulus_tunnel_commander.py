@@ -81,12 +81,12 @@ def parse_event(event):
 
 def process_agent_command(command_body: dict):
     
-    return format_response(status_code=201, body={'agent-command-response': 'success'})
+    return format_response(status_code=202, body={'agent-command-response': 'successfully queued command for execution'})
 
 
 def process_resource_server_command(command_body: dict):
     
-    return format_response(status_code=201, body={'resource-server-command-response': 'success'})
+    return format_response(status_code=202, body={'resource-server-command-response': 'successfully queued command for execution'})
 
 
 def lambda_handler(event, context):
@@ -103,7 +103,7 @@ def lambda_handler(event, context):
                 return process_resource_server_command(command_body=command_body)
         elif 'echo' in command_body:
             logger.info('ECHO command - returning to the client with the submitted text')
-            return format_response(status_code=201, body={'echo-response': '{}'.format(command_body['echo'])})
+            return format_response(status_code=200, body={'echo-response': '{}'.format(command_body['echo'])})
     except:
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
 
