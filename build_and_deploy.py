@@ -680,6 +680,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                     )
 
     def _get_stack_outputs(self, stack_name: str, next_token: str=None)->list:
+        logger.debug('Retrieving outputs for stack "{}"'.format(stack_name))
         outputs = list()
         import boto3
         import boto3.session
@@ -693,13 +694,14 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             )
         else:
             response = client.describe_stacks(StackName=stack_name)
+        logger.debug('response={}'.format(json.dumps(response, default=str)))
         if 'NextToken' in response:
             data = self._get_stack_outputs(next_token=response['NextToken'])
             outputs += data
         if 'Stacks' in response:
             for stack in response['Stacks']:
                 if 'StackName' in stack:
-                    if stack['StackName'] == 'cumulus-tunnel-event-resources':
+                    if stack['StackName'] == stack_name:
                         if 'Outputs' in stack:
                             outputs = stack['Outputs']
         return outputs
