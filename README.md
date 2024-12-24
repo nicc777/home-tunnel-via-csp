@@ -11,36 +11,44 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 # Project Status
 
-| Date       | Status           | Notes                                                     |
-|------------|:----------------:|-----------------------------------------------------------|
-| 2024-12-17 | Work in Progress | Most of the AWS IaC is done. Busy with the tunnel service |
-| 2024-12-07 | Planning         | Initial planning and setup of the project                 |
+| Date       | Status           | Notes                                                                    |
+|------------|:----------------:|--------------------------------------------------------------------------|
+| 2024-12-24 | Major Refactor   | After some practical tests, first major refactor done. Still lots to do. |
+|            |                  | Updated integration diagram                                              |
+|            |                  | Reorganized features and progress                                        |
+| 2024-12-17 | Work in Progress | Most of the AWS IaC is done. Busy with the tunnel service                |
+| 2024-12-07 | Planning         | Initial planning and setup of the project                                |
 
 # Planned features
 
-* [ ] Creating a Virtual Machine Instance where the tunnel will terminate (known as the relay host)
-* [ ] Track the user systems NAT address to the Internet for maintaining firewall rules to the relay machine (this may be a laptop from where a person may want to access the private system)
-  * [x] Agent to collect and upload public IP addresses
-  * [x] Lambda function to react on S3 object write events
-  * [ ] Lambda function to react to S3 delete events
-* [ ] Create reverse port tunneling from the private system to a local port
-* [ ] Enable authentication of the reverse HTTP proxy
-* [ ] Enable custom header requirements and other filters to allow/restrict access
-* [ ] Use `nginx` to setup an HTTP reverse proxy to the private system
-* [ ] Use `socat` (or similar) port forwarding from random or fixed ports to the forwarded ports from the private system
-* [ ] Create one or more custom DNS entries for the relay system for easy connection. Multiple subdomains can be created to map to the relay host Public IP address.
-* [ ] TLS certificate management (private certificates) for the `nginx` proxy
-* [ ] Create dashboards to track the status and network usage
+* [ ] Relay Server Agent
+* [ ] Relay Server Admin UI (Web)
+* [ ] Client Agent
+* [ ] Client Local Admin UI (Web)
+* [X] Deployment Script
+* [ ] API Commands
+  * [ ] Register Relay Server
+  * [ ] Deregister Relay Server
+  * [ ] Get Relay Server Config and STatus
+  * [ ] Register Agent
+  * [ ] Deregister Agent
+  * [ ] Get overall status
+* [ ] AMI Image Builder Solution to Prepare AMI Images and set a SSM Parameter
 
 The initial solution will be based on AWS but I will keep options open to potential roll it out to various other Cloud Service Providers that have the following features available for this solution:
 
-* Virtual Machine instance to start the relay host
+* Virtual Machine instance to start the relay server
   * Failure tolerant - meaning a terminated instance will automatically restart
   * Pipeline to build new patched images on a regular bases
 * DNS management capabilities (add/remove/edit records)
 * Simple storage solution to act as a repository for some temporary data as needed
 
+![Integration Design Overview](./images/design-Integration.png)
+
 # Cost
+
+> [!NOTE]
+> These cost estimates is based on a previous design which is no longer used. This will be updated again at a later stage.
 
 For AWS the expected monthly cost breakdown is in the file [aws_cost_estimate.json](./aws_cost_estimate.json) and comes down to:
 
