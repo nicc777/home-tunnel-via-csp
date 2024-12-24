@@ -391,14 +391,12 @@ Resources:
       AttributeDefinitions:      
       - AttributeName: "RecordKey"
         AttributeType: "S"
-      - AttributeName: "RecordCreateTimeStamp"
-        AttributeType: "N"
       - AttributeName: "RecordTtl"
         AttributeType: "N"
       KeySchema:
       - AttributeName: "RecordKey"
         KeyType: "HASH"
-      - AttributeName: "RecordCreateTimeStamp"
+      - AttributeName: "RecordTtl"
         KeyType: "RANGE"
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification: 

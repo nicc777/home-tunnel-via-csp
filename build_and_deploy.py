@@ -601,7 +601,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                     parameter_values_file=parameters_file,
                     stack_name=stack_name
                 )
-            self.stack_outputs += self._get_stack_outputs(stack_name=stack_name)
+            new_outputs = self._get_stack_outputs(stack_name=stack_name)
+            logger.debug('new_outputs: {}'.format(new_outputs))
+            self.stack_outputs += new_outputs
 
     def _deploy_api_resources(self):
         LAMBDA_FUNCTIONS = [
@@ -646,7 +648,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 parameter_values_file=parameters_file,
                 stack_name=stack_name
             )
-        self.stack_outputs += self._get_stack_outputs(stack_name=stack_name)
+        new_outputs = self._get_stack_outputs(stack_name=stack_name)
+        logger.debug('new_outputs: {}'.format(new_outputs))
+        self.stack_outputs += new_outputs
 
     def deploy(self):
         self._deploy_sqs_and_lambda_functions()
