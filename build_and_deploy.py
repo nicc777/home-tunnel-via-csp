@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 import time
 import traceback
 import subprocess
+import copy
+import tempfile
 
 
 parser = argparse.ArgumentParser(
@@ -59,11 +61,11 @@ parser.add_argument(
     required=True
 )
 parser.add_argument(
-    '--values',
+    '--values-api-resources',
     help='The values to pass for the IaC function for the specified Cloud Service Provider implementation. For AWS, this is the JSON parameters file for the CloudFormation template.',
     action='store',
     type=str,
-    dest='iac_values',
+    dest='iac_values_api_resources',
     required=False,
     default='/tmp/event_resources-parameters.json'
 )
@@ -77,16 +79,83 @@ parser.add_argument(
     default='cloud_iac/aws/ec2_setup_scripts/additional-setup.sh'
 )
 parser.add_argument(
-    '--refresh_running_vm',
-    help='Enables DEBUG logging',
-    action='store_true',
-    default=False,
-    required=False,
-    dest='refresh_running_vm'
+    '--param_vpc_id',
+    help='The VPC ID to be used. This is where the relay server will be deployed in.',
+    action='store',
+    type=str,
+    dest='param_vpc_id',
+    required=True
 )
+parser.add_argument(
+    '--param_vpc_cidr',
+    help='The CIDR address of the VPC',
+    action='store',
+    type=str,
+    dest='param_vpc_cidr',
+    required=True
+)
+parser.add_argument(
+    '--param_public_subnet_1_id',
+    help='ID of public Subnet 1 in the VPC',
+    action='store',
+    type=str,
+    dest='param_public_subnet_id_1',
+    required=True
+)
+parser.add_argument(
+    '--param_public_subnet_2_id',
+    help='ID of public Subnet 2 in the VPC',
+    action='store',
+    type=str,
+    dest='param_public_subnet_id_2',
+    required=True
+)
+parser.add_argument(
+    '--param_public_subnet_3_id',
+    help='ID of public Subnet 3 in the VPC',
+    action='store',
+    type=str,
+    dest='param_public_subnet_3d_1',
+    required=True
+)
+parser.add_argument(
+    '--param_relay_vm_identifier',
+    help='The VM image ID. For AWS this must be an AMI to use',
+    action='store',
+    type=str,
+    dest='param_relay_vm_identifier',
+    required=True
+)
+parser.add_argument(
+    '--param_base_domain_name',
+    help='The domain name for creating records. You MUST own and control this domain.',
+    action='store',
+    type=str,
+    dest='param_base_domain_name',
+    required=True
+)
+parser.add_argument(
+    '--param_aws_route53_zone_id',
+    help='The AWS Route 53 Zone ID. For now, this parameter is required, but this may change in the future when more cloud providers are supported.',
+    action='store',
+    type=str,
+    dest='param_aws_route53_zone_id',
+    required=True
+)
+parser.add_argument(
+    '--param_aws_acm_arn',
+    help='The AWS ACM Certificate ARN for the selected domain (typically a wild-card certificate). For now, this parameter is required, but this may change in the future when more cloud providers are supported.',
+    action='store',
+    type=str,
+    dest='param_aws_acm_arn',
+    required=True
+)
+
 
 args = parser.parse_args()
 DEBUG = args.verbose
+
+#region logger
 
 logger = logging.getLogger('cumulus_tunnel_build_and_deploy')
 logger.setLevel(logging.INFO)
@@ -100,6 +169,8 @@ formatter = logging.Formatter('%(asctime)s - %(funcName)s:%(lineno)d - %(levelna
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+
+#endregion logger
 
 def run_shell_script(script_path, *args):
   try:
@@ -142,6 +213,9 @@ class CloudServiceProviderBase:
     
     def refresh_vm(self):
         raise Exception('Must be implemented by CSP class')
+    
+    def prep_iac_parameters(self, target:str=None, target_id:str=None, additional_parameters: dict=dict()):
+        raise Exception('Must be implemented by CSP class')
 
 
 class AwsCloudServiceProvider(CloudServiceProviderBase):
@@ -150,7 +224,54 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         logger.info('Target AWS')
         self.cloud_formation_strategy = 'CREATE'
         self.stack_outputs = list()
+        self.current_cloudformation_stacks = self._list_cloudformation_stacks()
         super().__init__(args)
+
+    def prep_iac_parameters(self, target:str=None, target_id:str=None, additional_parameters: list=list()):
+        parameters = copy.deepcopy(additional_parameters)
+        # Adding standard parameters
+        parameters.append(
+            {
+                "ParameterKey": "ArtifactBucketNameParam",
+                "ParameterValue": self.args.artifact_location,
+            }
+        )
+        parameters.append(
+            {
+                "ParameterKey": "VpcId1Param",
+                "ParameterValue": self.args.param_vpc_id
+            }
+        )
+        parameters.append(
+            {
+                "ParameterKey": "VpcCidrParam",
+                "ParameterValue": self.args.param_vpc_cidr
+            }
+        )
+        parameters.append(
+            {
+                "ParameterKey": "SubnetId1Param",
+                "ParameterValue": self.args.param_public_subnet_id_1
+            }
+        )
+        parameters.append(
+            {
+                "ParameterKey": "SubnetId2Param",
+                "ParameterValue": self.args.param_public_subnet_id_2
+            }
+        )
+        parameters.append(
+            {
+                "ParameterKey": "SubnetId3Param",
+                "ParameterValue": self.args.param_public_subnet_id_3
+            }
+        )
+        # Write parameters JSON file
+        if os.path.exists(target) is True:
+            os.unlink(target)
+        with open(target, 'w') as f:
+            f.write(json.dumps(parameters))
+        logger.info('Written parameters file for CloudFormation template to file "{}"'.format(target))
 
     def _list_cloudformation_stacks(self, next_token: str=None)->list:
         stack_names = list()
@@ -182,9 +303,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
 
     def validate_args(self):
         logger.info('Validating values...')
-        if os.path.exists(self.args.iac_values) is False:
-            raise Exception('Values in JSON parameter file "{}" NOT FOUND. Please create this file or supply another file.'.format(self.args.iac_values))
-        logger.info('Using CloudFormation parameters file {}'.format(self.args.iac_values))
+        if os.path.exists(self.args.iac_values_api_resources) is False:
+            raise Exception('Values in JSON parameter file "{}" NOT FOUND. Please create this file or supply another file.'.format(self.args.iac_values_api_resources))
+        logger.info('Using CloudFormation parameters file {}'.format(self.args.iac_values_api_resources))
         logger.info('Validating basic AWS S3 access...')
         self.upload_artifact(
             source_file='cloud_iac/aws/ec2_setup_scripts/cumulus-tunnel-setup.sh',
@@ -195,14 +316,12 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         )
         logger.info('Artifact upload to S3 works!')
         logger.info('Checking if CloudFormation template "cumulus-tunnel-event-resources" already exists')
-        current_cloudformation_stacks = self._list_cloudformation_stacks()
-        logger.debug('Current CloudFormation stacks: {}'.format(json.dumps(current_cloudformation_stacks, default=str)))
-        if 'cumulus-tunnel-event-resources' in current_cloudformation_stacks:
+        logger.debug('Current CloudFormation stacks: {}'.format(json.dumps(self.current_cloudformation_stacks, default=str)))
+        if 'cumulus-tunnel-event-resources' in self.current_cloudformation_stacks:
             self.cloud_formation_strategy = 'CHANGE_SET'
         logger.info('CloudFormation strategy: {}'.format(self.cloud_formation_strategy))
 
     def build(self):
-        self._prep_cloud_serverless_functions()
         self.upload_artifact(
             source_file=self.args.extra_vm_setup,
             destination={
@@ -210,67 +329,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 'key': 'additional-setup.sh',
             }
         )
-        logger.info('Uploading the CloudFormation template...')
-        self.upload_artifact(
-            source_file='cloud_iac/aws/cloudformation/tunnel_resources.yaml',
-            destination={
-                'bucket_name': self.args.artifact_location,
-                'key': 'tunnel_resources.yaml',
-            }
-        )
-
-    def _prep_cloud_serverless_functions(self):
-        FILES_TO_PACKAGE = {
-            'cloud_iac/aws/lambda_functions/handler_s3_object_created.py': {
-                'package_name': 'handler_s3_object_created',
-            },
-            'cloud_iac/aws/lambda_functions/handler_s3_object_delete.py': {
-                'package_name': 'handler_s3_object_delete',
-            },
-            'cloud_iac/aws/lambda_functions/handler_s3_object_expired.py': {
-                'package_name': 'handler_s3_object_expired',
-            },
-            'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_authorizer.py': {
-                'package_name': 'handler_cumulus_tunnel_authorizer',
-            },
-            'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_commander.py': {
-                'package_name': 'handler_cumulus_tunnel_commander',
-            },
-        }
-
-
-        success = True
-        artifacts_to_copy = dict()
-
-        for source_file, source_file_metadata in FILES_TO_PACKAGE.items():
-            package_name = source_file_metadata['package_name']
-            try:
-                script_output = run_shell_script(
-                    "bash",
-                    "./scripts/package_lambda_function.sh",
-                    "-f",
-                    source_file,
-                    "-p",
-                    package_name,
-                )
-                for line in script_output.split('\n'):
-                    if 'Package File' in line:
-                        package_file = line.split(':')[1].strip()
-                        file_name = package_file.split(os.sep)[-1]
-                        logger.debug('Lambda Package:')
-                        logger.debug('\t package_file : {}'.format(package_file))
-                        logger.debug('\t file_name    : {}'.format(file_name))
-                        artifacts_to_copy[package_file] = dict()
-                        artifacts_to_copy[package_file]['bucket_name'] = self.args.artifact_location
-                        artifacts_to_copy[package_file]['key'] = file_name
-            except RuntimeError as e:
-                logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
-                success = False
-            if success is False:
-                raise Exception('Failed to run required lambda prep script "handler_s3_object_created"')
-        
-        for source_file, destination in artifacts_to_copy.items():
-            self.upload_artifact(source_file=source_file, destination=destination)
 
     def upload_artifact(self, source_file: str, destination: dict):
         logger.debug('\t source_file : {}'.format(source_file))
@@ -417,11 +475,12 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             sleep_interval_seconds=sleep_interval_seconds
         )
 
-    def _create_cloudformation_new_stack(self):
+    def _create_cloudformation_new_stack(self, template_key: str, parameter_values_file: str, stack_name: str):
         logger.info('Attempting to create a new CloudFormation Stack')
-        template_url = 'https://{}.s3.{}.amazonaws.com/tunnel_resources.yaml'.format(
+        template_url = 'https://{}.s3.{}.amazonaws.com/{}'.format(
             self.args.artifact_location,
-            self.args.csp_region
+            self.args.csp_region,
+            template_key
         )
         logger.debug('template_url: {}'.format(template_url))
         import boto3
@@ -429,9 +488,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
         client = session.client('cloudformation')
         response = client.create_stack(
-            StackName='cumulus-tunnel-event-resources',
+            StackName=stack_name,
             TemplateURL=template_url,
-            Parameters=load_json_file(file='{}'.format(self.args.iac_values)),
+            Parameters=load_json_file(file='{}'.format(parameter_values_file)),
             TimeoutInMinutes=60,
             Capabilities=[
                 'CAPABILITY_IAM',
@@ -440,13 +499,14 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             OnFailure='DO_NOTHING'
         )
         logger.debug('response: {}'.format(json.dumps(response, default=str)))
-        self._wait_for_stack_create_status_complete(stack_name='cumulus-tunnel-event-resources')
+        self._wait_for_stack_create_status_complete(stack_name=stack_name)
 
-    def _create_cloudformation_change_set(self):
+    def _create_cloudformation_change_set(self, template_key: str, parameter_values_file: str, stack_name: str):
         logger.info('Attempting to create a CloudFormation Change Set')
-        template_url = 'https://{}.s3.{}.amazonaws.com/tunnel_resources.yaml'.format(
+        template_url = 'https://{}.s3.{}.amazonaws.com/{}'.format(
             self.args.artifact_location,
-            self.args.csp_region
+            self.args.csp_region,
+            template_key
         )
         logger.debug('template_url: {}'.format(template_url))
         import boto3
@@ -454,9 +514,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
         client = session.client('cloudformation')
         response = client.create_change_set(
-            StackName='cumulus-tunnel-event-resources',
+            StackName=stack_name,
             TemplateURL=template_url,
-            Parameters=load_json_file(file='{}'.format(self.args.iac_values)),
+            Parameters=load_json_file(file='{}'.format(parameter_values_file)),
             Capabilities=[
                 'CAPABILITY_IAM',
                 'CAPABILITY_NAMED_IAM'
@@ -472,12 +532,141 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         change_set_id = response['Id']
         self._wait_for_change_set_status_complete(change_set_id=change_set_id)
 
-    def deploy(self):
-        if self.cloud_formation_strategy == 'CREATE':
-            self._create_cloudformation_new_stack()
+    def _package_lambda_function(self, source_file: str)->tuple:
+        package_name = source_file.split('/')[-1].split('.')[0]
+        file_name = None
+        try:
+            script_output = run_shell_script(
+                "bash",
+                "./scripts/package_lambda_function.sh",
+                "-f",
+                source_file,
+                "-p",
+                package_name,
+            )
+            for line in script_output.split('\n'):
+                if 'Package File' in line:
+                    package_file = line.split(':')[1].strip()
+                    file_name = package_file.split(os.sep)[-1]
+                    logger.debug('Lambda Package:')
+                    logger.debug('\t package_file : {}'.format(package_file))
+                    logger.debug('\t file_name    : {}'.format(file_name))
+                    artifacts_to_copy = dict()
+                    artifacts_to_copy['bucket_name'] = self.args.artifact_location
+                    artifacts_to_copy['key'] = file_name
+                    self.upload_artifact(
+                        source_file=package_file,
+                        destination=artifacts_to_copy
+                    )
+        except RuntimeError as e:
+            logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+            success = False
+        if success is False:
+            raise Exception('Failed to run required lambda prep script "{}"'.format(source_file))
+        return file_name, package_name
+
+    def _deploy_sqs_and_lambda_functions(self):
+        LAMBDA_FUNCTIONS = [
+            'cloud_iac/aws/lambda_functions/cmd_exec_create_relay_server.py',
+        ]
+        for source_file in LAMBDA_FUNCTIONS:
+            file_name, package_name = self._package_lambda_function(source_file=source_file)
+            handler_name = '{}.handler'.format(package_name)
+            api_command = package_name.replace('cmd_exec_', '') # example: cmd_exec_create_relay_server -> create_relay_server
+            stack_name = 'cumulus-tunnel-sqs-lambda-{}-stack'.format(api_command)
+            stack_name = stack_name.replace('_', '-')
+            parameters_file = '{}{}{}_parameters.json'.format(tempfile.gettempdir(), os.sep, package_name)
+            self.prep_iac_parameters(
+                target=parameters_file,
+                target_id='sqs_and_lambda_command_pair',
+                additional_parameters=[
+                    {
+                        "ParameterKey": "LambdaFunctionS3KeyParam",
+                        "ParameterValue": file_name
+                    },
+                    {
+                        "ParameterKey": "PythonHandlerParam",
+                        "ParameterValue": handler_name
+                    },
+                    
+                    {
+                        "ParameterKey": "QueueNameParam",
+                        "ParameterValue": '{}_queue'.format(package_name)
+                    },
+                    {
+                        "ParameterKey": "DebugParam",
+                        "ParameterValue": "1"
+                    },
+                    {
+                        "ParameterKey": "ApiCommandParam",
+                        "ParameterValue": api_command
+                    },
+                ]
+            )
+            if stack_name in self.current_cloudformation_stacks:
+                # CHANGE SET
+                self._create_cloudformation_change_set(
+                    template_key='sqs_and_lambda_command_pair.yaml',
+                    parameter_values_file=parameters_file,
+                    stack_name=stack_name
+                )
+            else:
+                # CREATE NEW
+                self._create_cloudformation_new_stack(
+                    template_key='sqs_and_lambda_command_pair.yaml',
+                    parameter_values_file=parameters_file,
+                    stack_name=stack_name
+                )
+            self.stack_outputs += self._get_stack_outputs(stack_name=stack_name)
+
+    def _deploy_api_resources(self):
+        LAMBDA_FUNCTIONS = [
+            'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_authorizer.py:CumulusTunnelApiAuthorizerS3KeyParam',
+            'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_commander.py:CumulusTunnelCommanderS3KeyParam',
+        ]
+        additional_parameters = list()
+        for function_data in LAMBDA_FUNCTIONS:
+            source_file = function_data.split(':')[0]
+            function_key_parameter_name = function_data.split(':')[1]
+            file_name, package_name = self._package_lambda_function(source_file=source_file)
+            additional_parameters.append(
+                {
+                    "ParameterKey": function_key_parameter_name,
+                    "ParameterValue": file_name
+                },
+            )
+        additional_parameters.append(
+            {
+                "ParameterKey": "DebugParam",
+                "ParameterValue": "1"
+            },
+        )
+
+        parameters_file = '{}{}{}cumulus_tunnel_api_resources_parameters.json'.format(tempfile.gettempdir(), os.sep)
+        stack_name = 'cumulus-tunnel-api-resources-stack'
+        
+        self.prep_iac_parameters(
+            target=parameters_file,
+            target_id='cumulus-tunnel-api-resources-stack',
+            additional_parameters=additional_parameters
+        )
+        if stack_name not in self.current_cloudformation_stacks:
+            self._create_cloudformation_new_stack(
+                template_key='tunnel_resources.yaml',
+                parameter_values_file=parameters_file,
+                stack_name=stack_name
+            )
         else:
-            self._create_cloudformation_change_set()
-        self.stack_outputs = self._get_stack_outputs()
+            self._create_cloudformation_change_set(
+                template_key='tunnel_resources.yaml',
+                parameter_values_file=parameters_file,
+                stack_name=stack_name
+            )
+        self.stack_outputs += self._get_stack_outputs(stack_name=stack_name)
+
+    def deploy(self):
+        self._deploy_sqs_and_lambda_functions()
+        self._deploy_api_resources()
         logger.info('OUTPUTS:')
         for output in self.stack_outputs:
             output_key = None
@@ -502,7 +691,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                         )
                     )
 
-    def _get_stack_outputs(self, next_token: str=None)->list:
+    def _get_stack_outputs(self, stack_name: str, next_token: str=None)->list:
         outputs = list()
         import boto3
         import boto3.session
@@ -511,11 +700,11 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         response = dict()
         if next_token is not None:
             response = client.describe_stacks(
-                StackName='cumulus-tunnel-event-resources',
+                StackName=stack_name,
                 NextToken=next_token
             )
         else:
-            response = client.describe_stacks(StackName='cumulus-tunnel-event-resources')
+            response = client.describe_stacks(StackName=stack_name)
         if 'NextToken' in response:
             data = self._get_stack_outputs(next_token=response['NextToken'])
             outputs += data
@@ -535,52 +724,29 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                     value = output['OutputValue']
         return value
 
-    def refresh_vm(self):
-        if self.args.refresh_running_vm is True:
-            launch_template_id = self.get_output_value_from_key(key='InstanceHostLaunchTemplateId')
-            autoscaling_group_name = self.get_output_value_from_key(key='CumulusTunnelInstanceAutoscalingGroupName')
-            import boto3
-            import boto3.session
-            session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
-            client = session.client('autoscaling')
-            response = client.start_instance_refresh(
-                AutoScalingGroupName=autoscaling_group_name,
-                DesiredConfiguration={
-                    'LaunchTemplate': {
-                        'LaunchTemplateId': launch_template_id,
-                        'Version': '$Latest'
-                    }
-                },
-                Preferences={
-                    'MinHealthyPercentage': 90,
-                    'SkipMatching': True
-                }
-            )
-            logger.debug('response: {}'.format(json.dumps(response, default=str)))
-            if 'InstanceRefreshId' in response:
-                logger.info('Instance refresh ID: {}'.format(response['InstanceRefreshId']))
-                logger.info('The Virtual Machine will be refreshed. This process may take a couple of minutes.')
-                logger.warning('If no changes were made, you may still need to manually terminate the runnign instance to force a new instance to start.')
-            else:
-                logger.warning('Unable to confirm if the Virtual Machine refresh has succeeded. Please check the AWS console.')
-
 
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
     'aws': AwsCloudServiceProvider
 }
-SUPPLEMENTARY_FILES_FOR_UPLOAD = {
-    # Local File                                        Remote KEY
-    'tunnel_instance/etc/nginx/sites-enabled/admin' :   'etc/nginx/sites-enabled/admin',
-    'tunnel_instance/var/www/html/index.html'       :   'var/www/html/index.html',
+ARTIFACT_FILES = {
+    # Local File                                                        Remote KEY
+    'tunnel_instance/etc/nginx/sites-enabled/admin'                 :   'etc/nginx/sites-enabled/admin',
+    'tunnel_instance/var/www/html/index.html'                       :   'var/www/html/index.html',
+    'cloud_iac/aws/cloudformation/relay_server.yaml'                :   'relay_server.yaml',
+    'cloud_iac/aws/cloudformation/sqs_and_lambda_command_pair.yaml' :   'sqs_and_lambda_command_pair.yaml',
+    'cloud_iac/aws/cloudformation/tunnel_resources.yaml'            :   'tunnel_resources.yaml',
 }
 
 
-def upload_supplementary_files(sp_class_instance: CloudServiceProviderBase):
-    for local_file, key in SUPPLEMENTARY_FILES_FOR_UPLOAD.items():
-        destination = dict()
-        destination['bucket_name'] = sp_class_instance.args.artifact_location
-        destination['key'] = key
-        sp_class_instance.upload_artifact(source_file=local_file, destination=destination)
+def upload_additional_artifact_files(sp_class_instance: CloudServiceProviderBase):
+    for local_file, key in ARTIFACT_FILES.items():
+        sp_class_instance.upload_artifact(
+            source_file=local_file,
+            destination={
+                'bucket_name': sp_class_instance.args.artifact_location,
+                'key': key,
+            }
+        )
 
 
 def main():
@@ -590,11 +756,10 @@ def main():
         sp_class_instance: CloudServiceProviderBase
         sp_class_instance = sp_class(args=args)
         logger.info('Uploading supplementary artifacts')
-        upload_supplementary_files(sp_class_instance=sp_class_instance)
+        upload_additional_artifact_files(sp_class_instance=sp_class_instance)
         logger.info('Building packages and preparing artifacts')
         sp_class_instance.build()
         sp_class_instance.deploy()
-        sp_class_instance.refresh_vm()
     else:
         logger.error(
             'Cloud Service Provider "{}" not yet implemented or supported. Supported options: {}'.format(

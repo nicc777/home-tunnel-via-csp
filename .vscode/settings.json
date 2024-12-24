@@ -17,8 +17,10 @@
         "!Ref scalar",
         "!GetAtt scaler",
         "!Join scaler",
+        "!ImportValue scalar",
         "!GetAtt",
         "!Sub",
-        "!Join"
+        "!Join",
+        "!ImportValue"
     ]
 }
