@@ -26,105 +26,77 @@ The files created in the cloud will have a limited life span (default 1 day) aft
 
 Start by preparing the AWS Lambda functions (packaging):
 
+```text
+-h, --help            show this help message and exit
+  -v, --verbose         Enables DEBUG logging
+  --cloud TARGET_CLOUD_SP
+                        A target cloud environment. Supported options: "aws"
+  --artifact_location ARTIFACT_LOCATION
+                        A target location to upload artifacts to, for example an S3 bucket name
+  --profile CSP_PROFILE
+                        The cloud profile to use. Processing is based on the implementations of the selected Cloud Service
+                        Provider - refer to documentation for more information. For AWS, this is simply the AWS profile
+                        name.
+  --region CSP_REGION   The cloud region to use. Refer to the specific Cloud Service Provider documentation for valid region
+                        values.
+  --extra_vm_setup EXTRA_VM_SETUP
+                        The optional custom setup script to be run when the tunnel VM starts up. Must be a SHELL script, if
+                        supplied.
+  --param_vpc_id PARAM_VPC_ID
+                        The VPC ID to be used. This is where the relay server will be deployed in.
+  --param_vpc_cidr PARAM_VPC_CIDR
+                        The CIDR address of the VPC
+  --param_public_subnet_1_id PARAM_PUBLIC_SUBNET_ID_1
+                        ID of public Subnet 1 in the VPC
+  --param_public_subnet_2_id PARAM_PUBLIC_SUBNET_ID_2
+                        ID of public Subnet 2 in the VPC
+  --param_public_subnet_3_id PARAM_PUBLIC_SUBNET_3D_1
+                        ID of public Subnet 3 in the VPC
+  --param_relay_vm_identifier PARAM_RELAY_VM_IDENTIFIER
+                        The VM image ID. For AWS this must be an AMI to use
+  --param_base_domain_name PARAM_BASE_DOMAIN_NAME
+                        The domain name for creating records. You MUST own and control this domain.
+  --param_aws_route53_zone_id PARAM_AWS_ROUTE53_ZONE_ID
+                        The AWS Route 53 Zone ID. For now, this parameter is required, but this may change in the future
+                        when more cloud providers are supported.
+  --param_aws_acm_arn PARAM_AWS_ACM_ARN
+                        The AWS ACM Certificate ARN for the selected domain (typically a wild-card certificate). For now,
+                        this parameter is required, but this may change in the future when more cloud providers are
+                        supported.
+```
+
+Prepare environment variables:
+
 ```shell
-sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_created.py -p handler_s3_object_created
-
-sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_delete.py -p handler_s3_object_delete
-
-sh ./scripts/package_lambda_function.sh -f cloud_iac/aws/lambda_functions/handler_s3_object_expired.py -p handler_s3_object_expired
-
 export ARTIFACT_BUCKET=...
+export AWS_PROFILE=...
+export AWS_REGION=...
+export PARAM_VPC_ID=...
+export PARAM_VPC_CIDR=...
+export PARAM_SUBNET_1_ID=...
+export PARAM_SUBNET_2_ID=...
+export PARAM_SUBNET_3_ID=...
+export PARAM_AMI=...
+export PARAM_DOMAIN_NAME-...
+export PARAM_ROUTE53_ZONE_ID=...
+export PARAM_ACM_ARN=...
 ```
 
-Upload the produced ZIP files to an S3 bucket created in the same region as where you want to deploy the CloudFormation template.
-
-You will need the ZIP file path in the output from each of the scripts above to create the appropriate parameter values.
-
-Next, copy the setup scripts that will run each time the virtual machine creating the tunnels will start-up:
+Run the deployment:
 
 ```shell
-aws s3 cp cloud_iac/aws/ec2_setup_scripts/cumulus-tunnel-setup.sh s3://$ARTIFACT_BUCKET/cumulus-tunnel-setup.sh
-
-aws s3 cp cloud_iac/aws/ec2_setup_scripts/additional-setup.sh s3://$ARTIFACT_BUCKET/additional-setup.sh
+python3 build_and_deploy.py                         \
+--artifact_location=$ARTIFACT_BUCKET                \
+--profile=$AWS_PROFILE                              \
+--region=$AWS_REGION                                \
+--param_vpc_id=$PARAM_VPC_ID                        \
+--param_vpc_cidr=$PARAM_VPC_CIDR                    \
+--param_public_subnet_1_id=$PARAM_SUBNET_1_ID       \
+--param_public_subnet_2_id=$PARAM_SUBNET_2_ID       \
+--param_public_subnet_3_id=$PARAM_SUBNET_3_ID       \
+--param_relay_vm_identifier=$PARAM_AMI              \
+--param_base_domain_name=$PARAM_DOMAIN_NAME         \
+--param_aws_route53_zone_id=$PARAM_ROUTE53_ZONE_ID  \
+--param_aws_acm_arn=$PARAM_ACM_ARN
 ```
 
-> [!NOTE]  
-> Use the `cloud_iac/aws/ec2_setup_scripts/additional-setup.sh` to add any custom stuff you need to set-up.
-
-Create the S3, SNS and Lambda resources:
-
-```shell
-# Create the parameters for the template 
-# ADD YOUR OWN VALUES...
-rm -vf /tmp/event_resources-parameters.json
-cat <<EOF >> /tmp/event_resources-parameters.json
-[
-    {
-        "ParameterKey": "CumulusTunnelBucketNameParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "ArtifactBucketNameParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "LambdaFunctionCreatedS3KeyParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "LambdaFunctionDeletedS3KeyParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "LambdaFunctionExpiredS3KeyParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "VpcId1Param",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "VpcCidrParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "SubnetId1Param",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "SubnetId2Param",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "SubnetId3Param",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "DebugParam",
-        "ParameterValue": "1"
-    },
-    {
-        "ParameterKey": "CumulusTunnelAmiIdParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "DefaultRoute53ZoneIdParam",
-        "ParameterValue": "..."
-    },
-    {
-        "ParameterKey": "DefaultRoute53DomainParam",
-        "ParameterValue": "..."
-    }
-]
-EOF
-
-PARAMETERS_FILE="file:///tmp/event_resources-parameters.json" && \
-TEMPLATE_BODY="file://$PWD/cloud_iac/aws/cloudformation/tunnel_resources.yaml" && \
-aws cloudformation create-stack \
---stack-name cumulus-tunnel-event-resources \
---template-body $TEMPLATE_BODY \
---parameters $PARAMETERS_FILE \
---capabilities CAPABILITY_NAMED_IAM \
---profile $PROFILE \
---region $REGION
-```

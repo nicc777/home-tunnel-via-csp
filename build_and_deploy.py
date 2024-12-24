@@ -61,15 +61,6 @@ parser.add_argument(
     required=True
 )
 parser.add_argument(
-    '--values-api-resources',
-    help='The values to pass for the IaC function for the specified Cloud Service Provider implementation. For AWS, this is the JSON parameters file for the CloudFormation template.',
-    action='store',
-    type=str,
-    dest='iac_values_api_resources',
-    required=False,
-    default='/tmp/event_resources-parameters.json'
-)
-parser.add_argument(
     '--extra_vm_setup',
     help='The optional custom setup script to be run when the tunnel VM starts up. Must be a SHELL script, if supplied.',
     action='store',
@@ -115,7 +106,7 @@ parser.add_argument(
     help='ID of public Subnet 3 in the VPC',
     action='store',
     type=str,
-    dest='param_public_subnet_3d_1',
+    dest='param_public_subnet_id_3',
     required=True
 )
 parser.add_argument(
@@ -222,7 +213,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
 
     def __init__(self, args):
         logger.info('Target AWS')
-        self.cloud_formation_strategy = 'CREATE'
+        super().__init__(args)
         self.stack_outputs = list()
         self.current_cloudformation_stacks = self._list_cloudformation_stacks()
         super().__init__(args)
@@ -303,9 +294,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
 
     def validate_args(self):
         logger.info('Validating values...')
-        if os.path.exists(self.args.iac_values_api_resources) is False:
-            raise Exception('Values in JSON parameter file "{}" NOT FOUND. Please create this file or supply another file.'.format(self.args.iac_values_api_resources))
-        logger.info('Using CloudFormation parameters file {}'.format(self.args.iac_values_api_resources))
         logger.info('Validating basic AWS S3 access...')
         self.upload_artifact(
             source_file='cloud_iac/aws/ec2_setup_scripts/cumulus-tunnel-setup.sh',
@@ -315,11 +303,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             }
         )
         logger.info('Artifact upload to S3 works!')
-        logger.info('Checking if CloudFormation template "cumulus-tunnel-event-resources" already exists')
-        logger.debug('Current CloudFormation stacks: {}'.format(json.dumps(self.current_cloudformation_stacks, default=str)))
-        if 'cumulus-tunnel-event-resources' in self.current_cloudformation_stacks:
-            self.cloud_formation_strategy = 'CHANGE_SET'
-        logger.info('CloudFormation strategy: {}'.format(self.cloud_formation_strategy))
 
     def build(self):
         self.upload_artifact(
@@ -535,6 +518,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
     def _package_lambda_function(self, source_file: str)->tuple:
         package_name = source_file.split('/')[-1].split('.')[0]
         file_name = None
+        success = True
         try:
             script_output = run_shell_script(
                 "bash",
