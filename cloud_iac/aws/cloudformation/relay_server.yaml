@@ -194,25 +194,8 @@ Resources:
   ###
   ########################################
 
-  CumulusTunnelAuthTokenSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties: 
-      Description: 'The secret for tunnel reverse proxy HTTP reverse proxy'
-      GenerateSecretString: 
-        ExcludeLowercase: false
-        ExcludeNumbers: false
-        ExcludePunctuation: true
-        ExcludeUppercase: false
-        GenerateStringKey: 'password'
-        IncludeSpace: false
-        PasswordLength: 64
-        RequireEachIncludedType: true
-        SecretStringTemplate: '{"username": "cumulus"}'
-      Name: !Sub '${AWS::StackName}-tunnel-http-password'
-
   CumulusTunnelInstanceRole1:
     Type: 'AWS::IAM::Role'
-    DependsOn: CumulusTunnelAuthTokenSecret
     Properties:
       AssumeRolePolicyDocument:
         Statement:
@@ -234,7 +217,7 @@ Resources:
             - 'secretsmanager:GetSecretValue'
             - 'secretsmanager:DescribeSecret'
             Effect: 'Allow'
-            Resource: !Ref CumulusTunnelAuthTokenSecret
+            Resource: !ImportValue  CumulusTunnelAuthTokenSecretArn
       - PolicyName: 'ArtifactBucketPolicy01'
         PolicyDocument:
           Version: '2012-10-17'
@@ -262,9 +245,7 @@ Resources:
 
   InstanceHostLaunchTemplate:
     Type: 'AWS::EC2::LaunchTemplate'
-    DependsOn:
-    - CumulusTunnelAuthTokenSecret
-    - TunnelInstructionQueue
+    DependsOn: TunnelInstructionQueue
     Properties:
       LaunchTemplateName: !Sub '${AWS::StackName}-LaunchTemplate'
       LaunchTemplateData:
@@ -301,10 +282,10 @@ Resources:
               unzip awscliv2.zip
               sudo ./aws/install
 
-              echo "CumulusTunnelAuthTokenSecretArn: ${CumulusTunnelAuthTokenSecretArn}"
-              echo "ArtifactBucket: ${ArtifactBucket}"
+              echo "SecretArn      : ${SecretArn}"
+              echo "ArtifactBucket : ${ArtifactBucket}"
 
-              export HTTP_PW_SECRET_ARN=${CumulusTunnelAuthTokenSecretArn}
+              export HTTP_PW_SECRET_ARN=${SecretArn}
               export ARTIFACT_BUCKET_NAME=${ArtifactBucket}
               export SQS_URL=${SqsUrlValue}
               export STATE_BUCKET=${StateBucketValue}
@@ -326,7 +307,7 @@ Resources:
               /tmp/cumulus-tunnel-setup.sh || true
               /tmp/additional-setup.sh || true
               --==BOUNDARY==--
-            - CumulusTunnelAuthTokenSecretArn: !Ref CumulusTunnelAuthTokenSecret
+            - SecretArn: !ImportValue  CumulusTunnelAuthTokenSecretArn
               ArtifactBucket: !Ref ArtifactBucketNameParam
               SqsUrlValue: !Ref TunnelInstructionQueue
               StateBucketValue: !Ref CumulusTunnelBucketNameParam

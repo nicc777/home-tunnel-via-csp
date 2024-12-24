@@ -355,6 +355,28 @@ Resources:
     Properties: 
       CloudWatchRoleArn: !GetAtt ApiGatewayLogsIAMRole.Arn
 
+  ########################################
+  ###
+  ### CREDENTIALS
+  ###
+  ########################################
+
+  CumulusTunnelAuthTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties: 
+      Description: 'The secret for tunnel reverse proxy HTTP reverse proxy'
+      GenerateSecretString: 
+        ExcludeLowercase: false
+        ExcludeNumbers: false
+        ExcludePunctuation: true
+        ExcludeUppercase: false
+        GenerateStringKey: 'password'
+        IncludeSpace: false
+        PasswordLength: 64
+        RequireEachIncludedType: true
+        SecretStringTemplate: '{"username": "cumulus"}'
+      Name: !Sub '${AWS::StackName}-tunnel-http-password'
+
 
   ########################################
   ###
@@ -473,4 +495,9 @@ Outputs:
     Value: !Ref CumulusTunnelSsmSecurityGroup
     Export:
       Name: 'CumulusTunnelSsmSecurityGroupId'
+
+  CumulusTunnelAuthTokenSecretArn:
+    Value: !Ref CumulusTunnelAuthTokenSecret
+    Export:
+      Name: 'CumulusTunnelAuthTokenSecretArn'
   

@@ -626,7 +626,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             },
         )
 
-        parameters_file = '{}{}{}cumulus_tunnel_api_resources_parameters.json'.format(tempfile.gettempdir(), os.sep)
+        parameters_file = '{}{}cumulus_tunnel_api_resources_parameters.json'.format(tempfile.gettempdir(), os.sep)
         stack_name = 'cumulus-tunnel-api-resources-stack'
         
         self.prep_iac_parameters(
