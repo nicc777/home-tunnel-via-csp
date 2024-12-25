@@ -248,13 +248,16 @@ Resources:
 
               #!/bin/bash
 
+              echo "########################################"
+              echo "###                                  ###"
+              echo "###     CLOUD INIT SETUP START       ###"
+              echo "###                                  ###"
+              echo "########################################"
+
               apt update && apt install -y unzip
               curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
               unzip awscliv2.zip
               sudo ./aws/install
-
-              echo "SecretArn      : ${SecretArn}"
-              echo "ArtifactBucket : ${ArtifactBucket}"
 
               export HTTP_PW_SECRET_ARN=${SecretArn}
               export ARTIFACT_BUCKET_NAME=${ArtifactBucket}
@@ -262,8 +265,6 @@ Resources:
               echo
               echo "Main setup script location      : s3://${ArtifactBucket}/cumulus-tunnel-setup.sh"
               echo "Secondary setup script location : s3://${ArtifactBucket}/additional-setup.sh"
-              echo "SQS Url                         : $SQS_URL"
-              echo "State File                      : s3://$STATE_BUCKET/$STATE_FILE_KEY"
               echo
 
               aws s3 cp s3://${ArtifactBucket}/cumulus-tunnel-setup.sh /tmp/cumulus-tunnel-setup.sh || true
@@ -274,6 +275,12 @@ Resources:
 
               /tmp/cumulus-tunnel-setup.sh || true
               /tmp/additional-setup.sh || true
+
+              echo "########################################"
+              echo "###                                  ###"
+              echo "###      CLOUD INIT SETUP DONE       ###"
+              echo "###                                  ###"
+              echo "########################################"
               --==BOUNDARY==--
             - SecretArn: !ImportValue  CumulusTunnelAuthTokenSecretArn
               ArtifactBucket: !Ref ArtifactBucketNameParam
