@@ -207,6 +207,7 @@ Resources:
   CumulusTunnelLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Name: !Sub 'cumulus-tunnel-${ApiCommandParam}'
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: !Ref LambdaFunctionS3KeyParam
