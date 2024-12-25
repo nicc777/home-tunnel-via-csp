@@ -72,6 +72,12 @@ Parameters:
     Description: "The ARM based instance type"
     Default: 't4g.nano'
 
+  RelayServerTtlHoursParam:
+    Type: 'String'
+    MinLength: 1
+    Description: 'The time in hours for the relay server to remain active. Try to keep this a low number (less than 168 or 1 week)'
+    Default: '12'
+
 
 #######################################################################################################################
 ###
@@ -204,7 +210,14 @@ Resources:
               Fn::Sub: 
               - 'arn:aws:s3:::${Bucket}/*'
               - Bucket: !Ref ArtifactBucketNameParam
-      # TODO Add admin of security groups
+      - PolicyName: !Sub '${AWS::StackName}-policy-3'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement: 
+          - Action: 
+            - 'dynamodb:PutItem'
+            Effect: 'Allow'
+            Resource: 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/cumulus-tunnel'
       Path: /
       RoleName: !Sub '${AWS::StackName}-RelayServerRole1'
 
@@ -261,6 +274,8 @@ Resources:
 
               export HTTP_PW_SECRET_ARN=${SecretArn}
               export ARTIFACT_BUCKET_NAME=${ArtifactBucket}
+              export STACK_NAME=${StackName}
+              export SERVER_TTL=${ServerTtl}
               
               echo
               echo "Main setup script location      : s3://${ArtifactBucket}/cumulus-tunnel-setup.sh"
@@ -284,6 +299,8 @@ Resources:
               --==BOUNDARY==--
             - SecretArn: !ImportValue  CumulusTunnelAuthTokenSecretArn
               ArtifactBucket: !Ref ArtifactBucketNameParam
+              StackName: !Ref AWS::StackName
+              ServerTtl: !Ref RelayServerTtlHoursParam
 
 # TODO - Create exports for all references 
 # TODO - Create unique DNS records for the admin server.
