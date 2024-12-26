@@ -402,7 +402,90 @@ Resources:
       TimeToLiveSpecification: 
         AttributeName: RecordTtl
         Enabled: true
+      StreamSpecification: 
+        StreamViewType: NEW_AND_OLD_IMAGES
 
+  DynamoDBStreamToLambdaRole: # Role needs VPC access
+    Type: AWS::IAM::Role
+    Properties:
+      Policies: # Inline policies for more granular control
+      - PolicyName: DynamoDBStreamAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:DescribeStream
+                - dynamodb:GetRecords
+                - dynamodb:GetShardIterator
+                - dynamodb:ListStreams
+              Resource: !GetAtt CumulusTunnelDynamodbTable.StreamArn
+      - PolicyName: VPCAccessPolicy # Add VPC access policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ec2:CreateNetworkInterface
+            - ec2:DeleteNetworkInterface
+            - ec2:DescribeNetworkInterfaces
+            Resource: '*'
+
+  DynamoDbTtlExpirationHandler:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: cumulus-tunnel-dynamodb-ttl-handler
+      Handler: dynamodb_ttl_expire_event_handler.handler
+      Runtime: python3.12
+      Timeout: 30
+      MemorySize: 128
+      Role: !GetAtt DynamoDBStreamToLambdaRole.Arn
+      Environment:
+        Variables:
+          DEBUG: !Ref DebugParam
+          URL:
+            Fn::Join:
+            - ''
+            - - 'https://'
+              - !Ref ApiGateway
+              - '.execute-api.'
+              - !Sub ${AWS::Region}
+              - '.amazonaws.com/cumulus-tunnel/command'
+      VpcConfig: 
+        SubnetIds: 
+        - !Ref SubnetId1Param
+        - !Ref SubnetId2Param
+        - !Ref SubnetId3Param
+        SecurityGroupIds:
+        - !GetAtt DynamoDbTtlExpirationHandlerSG.GroupId
+      Code:
+        S3Bucket: !Ref ArtifactBucketNameParam
+        S3Key: dynamodb_ttl_expire_event_handler.zip
+
+  DynamoDbTtlExpirationHandlerSG: # Security group for Lambda
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable internet access for the Lambda function 
+      VpcId: !Ref VpcId1Param
+      SecurityGroupIngress: # Allow inbound from VPC (optional, if needed)
+      - IpProtocol: -1 # All protocols
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: !Ref VpcCidrParam
+      SecurityGroupEgress: # Allow outbound to internet
+      - IpProtocol: -1 # All protocols
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+
+  LambdaEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      FunctionName: !GetAtt DynamoDbTtlExpirationHandler.Arn
+      EventSourceArn: !GetAtt CumulusTunnelDynamodbTable.StreamArn
+      StartingPosition: TRIM_HORIZON 
+      BatchSize: 1 
+      Enabled: true
 
   ########################################
   ###

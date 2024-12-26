@@ -312,6 +312,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 'key': 'additional-setup.sh',
             }
         )
+        file_name, package_name = self._package_lambda_function(source_file='cloud_iac/aws/lambda_functions/dynamodb_ttl_expire_event_handler.py')
+        logger.debug('DynamoDB Lambda Function: file_name    : {}'.format(file_name))
+        logger.debug('DynamoDB Lambda Function: package_name : {}'.format(package_name))
 
     def upload_artifact(self, source_file: str, destination: dict):
         logger.debug('\t source_file : {}'.format(source_file))
