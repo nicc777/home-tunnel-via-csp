@@ -405,7 +405,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             sleep_interval_seconds=sleep_interval_seconds
         )
 
-    def _wait_for_stack_create_status_complete(self, stack_name: str, next_token: str=None, try_count: int=0, max_tries: int=100, sleep_interval_seconds: int=10)->str:
+    def _wait_for_stack_create_status_complete(self, stack_name: str, next_token: str=None, try_count: int=0, max_tries: int=100, sleep_interval_seconds: int=30)->str:
         counter = try_count + 1
         if counter > max_tries:
             raise Exception('Maximum attempts reached')
