@@ -90,7 +90,35 @@ def request(
         )
     return response
 
+
+def do_process_record(record)->bool:
+    logger.debug('record: {}'.format(json.dumps(record, default=str)))
+    try:
+        if 'delete' not in record['eventName'].lower():
+            return False
+        if 'dynamodb' in record:
+            return True
+        logger.warning('This does not look like a DynamoDB Event')
+    except:
+        logger.error('Unable to parse event - automatically will not qualify')
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+    return False
+
+
+def get_dynamodb_deleted_record(record)->dict:
+    simplified_record = dict()
+    dynamodb_record = record['dynamodb']
+    # TODO parse deleted record and construct a simplified record
+    return simplified_record
+
+
 def handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
-
-    return "ok"
+    if 'Records' not in event:
+        return 'ok'
+    for record in event['Records']:
+        logger.debug('Evaluating if record must be processed')
+        if do_process_record(record=record) is False:
+            logger.warning('Ignoring Record')
+            return 'ok'
+    return 'ok'
