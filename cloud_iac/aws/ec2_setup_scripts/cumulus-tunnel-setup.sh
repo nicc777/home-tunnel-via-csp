@@ -14,7 +14,7 @@ systemctl start nginx
 
 export EXPIRE_TTL=`date -u -d "${SERVER_TTL} hours" +%s`
 
-cat <<EOF >> /tmp/stack_data_for_db
+cat <<EOF > /tmp/stack_data_for_db
 {
     "RecordKey": {
         "S": "relay-server-stack"

@@ -11,6 +11,7 @@ import traceback
 import subprocess
 import copy
 import tempfile
+import base64
 
 
 parser = argparse.ArgumentParser(
@@ -216,7 +217,9 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         super().__init__(args)
         self.stack_outputs = list()
         self.current_cloudformation_stacks = self._list_cloudformation_stacks()
-        super().__init__(args)
+        import boto3
+        import boto3.session
+        self.session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
 
     def prep_iac_parameters(self, target:str=None, target_id:str=None, additional_parameters: list=list()):
         parameters = copy.deepcopy(additional_parameters)
@@ -658,6 +661,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
     def deploy(self):
         self._deploy_sqs_and_lambda_functions()
         self._deploy_api_resources()
+        self._set_dynamodb_lambda_function_additional_environment_variables()
         logger.info('OUTPUTS:')
         for output in self.stack_outputs:
             output_key = None
@@ -716,6 +720,171 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 if output['OutputKey'] == key:
                     value = output['OutputValue']
         return value
+    
+    def _get_current_lambda_environment_variables(self, function_name: str)->dict:
+        environment_variables = dict()
+        client = self.session.client('lambda')
+        response = client.get_function_configuration(
+            FunctionName=function_name
+        )
+        if 'Environment' in response:
+            if 'Variables' in response['Environment']:
+                for key,val in response['Environment']['Variables'].items():
+                    environment_variables[key] = '{}'.format(val)
+
+        return environment_variables
+    
+    def _get_current_lambda_complete_configuration(self, function_name: str)->dict:
+        current_configuration = dict()
+        client = self.session.client('lambda')
+        response = client.get_function_configuration(FunctionName=function_name)
+        keys_to_copy = (
+            'Role',
+            'Handler',
+            'Description',
+            'Timeout',
+            'MemorySize',
+            'VpcConfig',
+            'Environment',
+            'Runtime',
+            'DeadLetterConfig',
+            'KMSKeyArn',
+            'TracingConfig',
+            'RevisionId',
+            'Layers',
+            'FileSystemConfigs',
+            'ImageConfig',
+            'EphemeralStorage',
+            'SnapStart',
+            'LoggingConfig',
+        )
+        for key in keys_to_copy:
+            if key in response:
+                current_configuration[key] = response[key]
+        return current_configuration
+
+    def _get_stack_identifiers(self, name: str='cumulus-tunnel-api-resources-stack', next_token: str=None)->list:
+        stack_identifiers = list()
+        client = self.session.client('cloudformation')
+        response = dict()
+        if next_token is not None:
+            response = client.list_stacks(NextToken=next_token)
+        else:
+            response = client.list_stacks()
+        if 'NextToken' in response:
+            stack_identifiers += self._get_stack_identifiers(name=name, next_token=response['NextToken'])
+        if 'StackSummaries' in response:
+            for data in response['StackSummaries']:
+                if name in data['StackName']:
+                    record = dict()
+                    record['StackId'] = data['StackId']
+                    record['StackName'] = data['StackName']
+                    record['StackStatus'] = data['StackStatus']
+                    record['CreationTime'] = data['CreationTime']
+                    # logger.debug('INTERIM data: {}'.format(json.dumps(record, default=str)))
+                    stack_identifiers.append(record)
+        logger.info('Retrieved {} stacks'.format(len(stack_identifiers)))
+        return stack_identifiers
+
+
+    def _parse_and_get_most_recent_stack(self, stack_identifiers: list)->dict:
+        current_stack_identifier_record = dict()
+        for stack in stack_identifiers:
+            if len(current_stack_identifier_record) == 0:
+                current_stack_identifier_record = copy.deepcopy(stack)
+            else:
+                if stack['CreationTime'] > current_stack_identifier_record['CreationTime']:
+                    current_stack_identifier_record = copy.deepcopy(stack)
+        return current_stack_identifier_record
+
+
+    def _get_cloudformation_resources(self, stack_name: str, next_token: str=None)->list:
+        resources = list()
+        client = self.session.client('cloudformation')
+        response = dict()
+        if next_token is not None:
+            response = client.list_stack_resources(StackName=stack_name, NextToken=next_token)
+        else:
+            response = client.list_stack_resources(StackName=stack_name)
+        if 'NextToken' in response:
+            resources += self._get_cloudformation_resources(stack_name=stack_name, next_token=response['NextToken'])
+        if 'StackResourceSummaries' in response:
+            for data in response['StackResourceSummaries']:
+                record = dict()
+                record['LogicalResourceId'] = data['LogicalResourceId']
+                record['PhysicalResourceId'] = data['PhysicalResourceId']
+                record['ResourceStatus'] = data['ResourceStatus']
+                resources.append(record)
+        return resources
+
+
+    def _get_resource_physical_id(self, logical_id: str, resources: list)->tuple:
+        for record in resources:
+            if record['LogicalResourceId'] == logical_id:
+                return record['PhysicalResourceId'], record['ResourceStatus']
+
+
+    def _get_api_token(self, api_key_id: str):
+        client = self.session.client('apigateway')
+        response = client.get_api_key(
+            apiKey=api_key_id,
+            includeValue=True
+        )
+        return response['value']
+
+
+    def _get_secret_value(self, secret_id: str)->str:
+        client = self.session.client('secretsmanager')
+        response = client.get_secret_value(SecretId=secret_id)
+        return response['SecretString']
+
+    def _set_dynamodb_lambda_function_additional_environment_variables(self):
+        lambda_function_name = 'cumulus-tunnel-dynamodb-ttl-handler'
+        lambda_function_configuration = self._get_current_lambda_complete_configuration(function_name=lambda_function_name)
+        lambda_function_environment_variables = self._get_current_lambda_environment_variables(function_name=lambda_function_name)
+        if 'CREDENTIALS_SECRET' in lambda_function_environment_variables:
+            lambda_function_environment_variables.pop('CREDENTIALS_SECRET')
+        if 'API_KEY' in lambda_function_environment_variables:
+            lambda_function_environment_variables.pop('API_KEY')
+
+        stack_identifiers = self._get_stack_identifiers()
+        most_recent_stack = self._parse_and_get_most_recent_stack(stack_identifiers=stack_identifiers)
+        logger.debug('most_recent_stack: {}'.format(json.dumps(most_recent_stack, default=str)))
+        resources = self._get_cloudformation_resources(stack_name=most_recent_stack['StackName'])
+        logger.debug('resources: {}'.format(json.dumps(resources, default=str)))
+        api_key_logical_id, api_key_resource_status = self._get_resource_physical_id(
+            logical_id='ApiKey', 
+            resources=resources
+        )
+        logger.debug('API Key "{}" has status "{}"'.format(api_key_logical_id, api_key_resource_status))
+        api_gateway_stage_token = self._get_api_token(api_key_id=api_key_logical_id)
+        logger.info('HEADER: x-api-key: {}'.format(api_gateway_stage_token))
+        secrets_manager_logical_id, secrets_manager_resource_status = self._get_resource_physical_id(
+            logical_id='CumulusTunnelAuthTokenSecret', 
+            resources=resources
+        )
+        logger.debug('SecretsManager "{}" has status "{}"'.format(secrets_manager_logical_id, secrets_manager_resource_status))
+        secret_value = self._get_secret_value(secret_id=secrets_manager_logical_id)
+        logger.debug('secret_value: {}'.format(secret_value))
+        secret_data = json.loads(secret_value)
+        authorizer_string = '{}:{}'.format(secret_data['username'], secret_data['password'])
+        base64_string = base64.b64encode(authorizer_string.encode('utf-8')).decode('utf-8')
+        logger.info('HEADER x-cumulus-tunnel-credentials: {}'.format(base64_string))
+
+        lambda_function_environment_variables['CREDENTIALS_SECRET'] = base64_string
+        lambda_function_environment_variables['API_KEY'] = api_gateway_stage_token
+
+        # Update Environment Variables....
+        client = self.session.client('lambda')
+        response = client.update_function_configuration(
+            FunctionName=lambda_function_name,
+            Environment={
+                'Variables': lambda_function_environment_variables
+            }
+        )
+
+        logger.debug('response: {}'.format(json.dumps(response, default=str, indent=4)))
+
 
 
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {

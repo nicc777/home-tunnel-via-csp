@@ -15,8 +15,8 @@ from email.message import Message
 
 URL = os.getenv('URL', 'http://localhost/')
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
-CREDENTIALS_SECRET_ARN = os.getenv('CREDENTIALS_SECRET_ARN', 'none')        # ARN
-API_KEY_ID = os.getenv('API_KEY_ID', 'none')                                # ID
+CREDENTIALS_SECRET = os.getenv('CREDENTIALS_SECRET', 'none')
+API_KEY = os.getenv('API_KEY', 'none')
 
 
 logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
@@ -73,6 +73,10 @@ def request(
             headers["Content-Type"] = "application/json; charset=UTF-8"
         else:
             request_data = urllib.parse.urlencode(data).encode()
+    logger.debug('url          : {}'.format(url))
+    logger.debug('method       : {}'.format(method))
+    logger.debug('headers      : {}'.format(headers))
+    logger.debug('request_data : {}'.format(request_data))
     httprequest = urllib.request.Request(
         url, data=request_data, headers=headers, method=method
     )
@@ -155,7 +159,7 @@ def get_dynamodb_deleted_record_as_simple_dict(record)->dict:
             simplified_record[field_name] = '{}'.format(field_value_raw)
             if field_value_type == 'N':
                 simplified_record[field_name] = convert_value_to_number(value=field_value_raw)
-            elif field_value_type in ('L', 'M', 'SS', 'NS', 'BS',) is True:
+            elif field_value_type in ('L', 'M', 'SS', 'NS', 'BS',):
                 raise Exception('Field type "{}" is not yet supported'.format(field_value_type))
     return simplified_record
 
@@ -176,21 +180,6 @@ def is_command_api_type_record(record: dict)->bool:
             logger.warning('Key "{}" type expected to be "{}" but found {}'.format(key, type(expected_type), type(record[key])))
             return False
     return True
-
-
-def get_api_token(api_key_id: str):
-    client = boto3.client('apigateway')
-    response = client.get_api_key(
-        apiKey=api_key_id,
-        includeValue=True
-    )
-    return response['value']
-
-
-def get_secret_value(secret_id: str)->str:
-    client = boto3.client('secretsmanager')
-    response = client.get_secret_value(SecretId=secret_id)
-    return response['SecretString']
 
 
 def handler(event, context):
@@ -232,15 +221,12 @@ def handler(event, context):
                     'command': None,
                     'body': json.loads(data.pop('RecordValue'))
                 }
-                secret_value = get_secret_value(secret_id=CREDENTIALS_SECRET_ARN)
-                secret_data = json.loads(secret_value)
-                authorizer_string = '{}:{}'.format(secret_data['username'], secret_data['password'])
                 response = request(
                     url=URL,
                     data=origin_data,
                     headers={
-                        'x-api-key': get_api_token(api_key_id=API_KEY_ID),
-                        'x-cumulus-tunnel-credentials': base64.b64encode(authorizer_string.encode('utf-8')).decode('utf-8'),
+                        'x-api-key': API_KEY,
+                        'x-cumulus-tunnel-credentials': CREDENTIALS_SECRET,
                         'origin': origin,
                     },
                     method="POST"
