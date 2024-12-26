@@ -268,7 +268,15 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             Resource: arn:aws:logs:*:*:*
-      # TODO Add SQS permissions
+      - PolicyName: !Sub ${AWS::StackName}-sqs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sqs:GetQueueUrl
+            - sqs:SendMessage
+            Resource: "*"
 
   LambdaAuthorizerIAMRole: 
     Type: AWS::IAM::Role
@@ -440,33 +448,26 @@ Resources:
             - ec2:DeleteNetworkInterface
             - ec2:DescribeNetworkInterfaces
             Resource: '*'
-      - PolicyName: ApiGatewayKeyPolicy 
+      - PolicyName: SQSAccessPolicy
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
           - Effect: Allow
             Action:
-            - apigateway:GET
-            Resource: '*'
-      - PolicyName: SecretsManagerPolicy 
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - secretsmanager:GetSecretValue
-            Resource: !Ref CumulusTunnelAuthTokenSecret
+            - sqs:GetQueueUrl
+            - sqs:SendMessage
+            Resource: "*"
 
-  # DynamoDbTtlExpirationHandlerLogGroup:
-  #   Type: AWS::Logs::LogGroup
-  #   DependsOn: DynamoDbTtlExpirationHandler
-  #   Properties:
-  #     LogGroupName: 
-  #       Fn::Join:
-  #       - ''
-  #       - - "/aws/lambda/"
-  #         - Ref: DynamoDbTtlExpirationHandler
-  #     RetentionInDays: 7
+  DynamoDbTtlExpirationHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: DynamoDbTtlExpirationHandler
+    Properties:
+      LogGroupName: 
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: DynamoDbTtlExpirationHandler
+      RetentionInDays: 7
 
   DynamoDbTtlExpirationHandler:
     Type: AWS::Lambda::Function
@@ -480,14 +481,6 @@ Resources:
       Environment:
         Variables:
           DEBUG: !Ref DebugParam
-          URL:
-            Fn::Join:
-            - ''
-            - - 'https://'
-              - !Ref ApiGateway
-              - '.execute-api.'
-              - !Sub ${AWS::Region}
-              - '.amazonaws.com/cumulus-tunnel/command'
       VpcConfig: 
         SubnetIds: 
         - !Ref SubnetId1Param

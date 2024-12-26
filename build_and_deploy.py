@@ -206,7 +206,7 @@ class CloudServiceProviderBase:
     def refresh_vm(self):
         raise Exception('Must be implemented by CSP class')
     
-    def prep_iac_parameters(self, target:str=None, target_id:str=None, additional_parameters: dict=dict()):
+    def prep_iac_parameters(self, target:str=None, additional_parameters: dict=dict()):
         raise Exception('Must be implemented by CSP class')
 
 
@@ -221,7 +221,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         import boto3.session
         self.session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
 
-    def prep_iac_parameters(self, target:str=None, target_id:str=None, additional_parameters: list=list()):
+    def prep_iac_parameters(self, target:str=None, additional_parameters: list=list()):
         parameters = copy.deepcopy(additional_parameters)
         # Adding standard parameters
         parameters.append(
@@ -472,10 +472,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             template_key
         )
         logger.debug('template_url: {}'.format(template_url))
-        import boto3
-        import boto3.session
-        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
-        client = session.client('cloudformation')
+        client = self.session.client('cloudformation')
         response = client.create_stack(
             StackName=stack_name,
             TemplateURL=template_url,
@@ -498,10 +495,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             template_key
         )
         logger.debug('template_url: {}'.format(template_url))
-        import boto3
-        import boto3.session
-        session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
-        client = session.client('cloudformation')
+        client = self.session.client('cloudformation')
         response = client.create_change_set(
             StackName=stack_name,
             TemplateURL=template_url,
@@ -555,20 +549,46 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             raise Exception('Failed to run required lambda prep script "{}"'.format(source_file))
         return file_name, package_name
 
+    def _register_api_command_in_dynamodb(self, command: str, sqs_url: str):
+        timestamp_now = int(datetime.now(timezone.utc))
+        record_ttl = timestamp_now + (86400*365*100) + (86400*24) # 100 years from now (including total leap days of 24) - at which time none of this will matter...
+        client = self.session.client('dynamodb')
+        response = client.put_item(
+            TableName='cumulus-tunnel',
+            Item={
+                "RecordKey": {
+                    "S": "config:api-command:{}".format(command)
+                },
+                "RecordTtl": {
+                    "N": "{}".format(record_ttl)
+                },
+                "RecordValue": {
+                    "S": "{\"SqsUrl\": \"{}\"}".format(sqs_url)
+                },
+                "CommandOnTtl": {
+                    "S": "IGNORE"
+                },
+                "RecordOrigin": {
+                    "S": "NONE"
+                }
+            }
+        )
+        logger.debug('response: {}'.format(json.dumps(response, default=str, indent=4)))
+
     def _deploy_sqs_and_lambda_functions(self):
         LAMBDA_FUNCTIONS = [
             'cloud_iac/aws/lambda_functions/cmd_exec_create_relay_server.py',
+            'cloud_iac/aws/lambda_functions/cmd_exec_delete_relay_server_stack.py',
         ]
         for source_file in LAMBDA_FUNCTIONS:
             file_name, package_name = self._package_lambda_function(source_file=source_file)
             handler_name = '{}.handler'.format(package_name)
             api_command = package_name.replace('cmd_exec_', '') # example: cmd_exec_create_relay_server -> create_relay_server
-            stack_name = 'cumulus-tunnel-sqs-lambda-{}-stack'.format(api_command)
+            stack_name = 'cumulus-tunnel-sqs-lambda-{}'.format(api_command)
             stack_name = stack_name.replace('_', '-')
             parameters_file = '{}{}{}_parameters.json'.format(tempfile.gettempdir(), os.sep, package_name)
             self.prep_iac_parameters(
                 target=parameters_file,
-                target_id='sqs_and_lambda_command_pair',
                 additional_parameters=[
                     {
                         "ParameterKey": "LambdaFunctionS3KeyParam",
@@ -609,6 +629,15 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 )
             new_outputs = self._get_stack_outputs(stack_name=stack_name)
             logger.debug('new_outputs: {}'.format(new_outputs))
+            api_command_name = ''
+            sqs_url = ''
+            for output_record in new_outputs:
+                if output_record['OutputKey'] == 'ApiCommandName':
+                    api_command_name = output_record['OutputValue']
+                if output_record['OutputKey'] == 'SqsQueueUrl':
+                    sqs_url = output_record['OutputValue']
+            if len(api_command_name) > 0 and len(sqs_url) > 0:
+                self._register_api_command_in_dynamodb(command=api_command_name, sqs_url=sqs_url)
             self.stack_outputs += new_outputs
 
     def _deploy_api_resources(self):
@@ -639,7 +668,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         
         self.prep_iac_parameters(
             target=parameters_file,
-            target_id='cumulus-tunnel-api-resources-stack',
             additional_parameters=additional_parameters
         )
         if stack_name not in self.current_cloudformation_stacks:
@@ -786,7 +814,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         logger.info('Retrieved {} stacks'.format(len(stack_identifiers)))
         return stack_identifiers
 
-
     def _parse_and_get_most_recent_stack(self, stack_identifiers: list)->dict:
         current_stack_identifier_record = dict()
         for stack in stack_identifiers:
@@ -796,7 +823,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 if stack['CreationTime'] > current_stack_identifier_record['CreationTime']:
                     current_stack_identifier_record = copy.deepcopy(stack)
         return current_stack_identifier_record
-
 
     def _get_cloudformation_resources(self, stack_name: str, next_token: str=None)->list:
         resources = list()
@@ -817,12 +843,10 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 resources.append(record)
         return resources
 
-
     def _get_resource_physical_id(self, logical_id: str, resources: list)->tuple:
         for record in resources:
             if record['LogicalResourceId'] == logical_id:
                 return record['PhysicalResourceId'], record['ResourceStatus']
-
 
     def _get_api_token(self, api_key_id: str):
         client = self.session.client('apigateway')
@@ -831,7 +855,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             includeValue=True
         )
         return response['value']
-
 
     def _get_secret_value(self, secret_id: str)->str:
         client = self.session.client('secretsmanager')
