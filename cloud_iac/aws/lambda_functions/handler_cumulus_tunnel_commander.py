@@ -60,7 +60,7 @@ def validate_agent_command(command_body: dict):
     logger.debug('Validating AGENT command: {}'.format(json.dumps(command_body, default=str)))
     for key in ('NatAddressData', 'ExtraIpAddressData', 'AgentId', 'RelayId'):
         if key not in command_body:
-            raise Exception('Key "{}" not found in agent submitted data. Cannot proceed.')
+            raise Exception('Key "{}" not found in agent submitted data. Cannot proceed.'.format(key))
 
 
 def validate_resource_server_command(command_body: dict):

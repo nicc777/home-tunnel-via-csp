@@ -9,8 +9,7 @@ import json
 import logging
 import traceback
 import sys
-import boto3
-import base64
+import socket
 from email.message import Message
 
 URL = os.getenv('URL', 'http://localhost/')
@@ -77,6 +76,8 @@ def request(
     logger.debug('method       : {}'.format(method))
     logger.debug('headers      : {}'.format(headers))
     logger.debug('request_data : {}'.format(request_data))
+    hostname = url.split('/')[2]
+    logger.debug('DNS          : {}'.format(socket.gethostbyname(hostname)))
     httprequest = urllib.request.Request(
         url, data=request_data, headers=headers, method=method
     )
@@ -182,6 +183,10 @@ def is_command_api_type_record(record: dict)->bool:
     return True
 
 
+def lookup_dns(hostname: str)->str:
+    ip_address = socket.gethostbyname(hostname)
+
+
 def handler(event, context):
     """
         Expected data that this function can react on (example):
@@ -218,8 +223,8 @@ def handler(event, context):
                 logger.info('Passing data on to command API')
                 origin = data.pop('RecordOrigin')
                 origin_data = {
-                    'command': None,
-                    'body': json.loads(data.pop('RecordValue'))
+                    'command': data['CommandOnTtl'],
+                    'body': json.loads(data['RecordValue']),
                 }
                 response = request(
                     url=URL,
