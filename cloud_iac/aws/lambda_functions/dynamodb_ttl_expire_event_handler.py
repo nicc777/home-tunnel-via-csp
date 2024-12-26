@@ -8,6 +8,7 @@ import urllib.request
 import json
 import logging
 import traceback
+import sys
 from email.message import Message
 
 URL = os.getenv('URL', 'http://localhost/')
