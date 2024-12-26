@@ -405,22 +405,32 @@ Resources:
       StreamSpecification: 
         StreamViewType: NEW_AND_OLD_IMAGES
 
-  DynamoDBStreamToLambdaRole: # Role needs VPC access
+  DynamoDBStreamToLambdaRole: 
     Type: AWS::IAM::Role
     Properties:
-      Policies: # Inline policies for more granular control
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies: 
       - PolicyName: DynamoDBStreamAccess
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
-            - Effect: Allow
-              Action:
-                - dynamodb:DescribeStream
-                - dynamodb:GetRecords
-                - dynamodb:GetShardIterator
-                - dynamodb:ListStreams
-              Resource: !GetAtt CumulusTunnelDynamodbTable.StreamArn
-      - PolicyName: VPCAccessPolicy # Add VPC access policy
+          - Effect: Allow
+            Action:
+            - dynamodb:DescribeStream
+            - dynamodb:GetRecords
+            - dynamodb:GetShardIterator
+            - dynamodb:ListStreams
+            Resource: !GetAtt CumulusTunnelDynamodbTable.StreamArn
+      - PolicyName: VPCAccessPolicy 
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
