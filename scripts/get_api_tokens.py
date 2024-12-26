@@ -29,7 +29,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-def get_stack_identifiers(name: str='cumulus-tunnel-event-resources', next_token: str=None)->list:
+def get_stack_identifiers(name: str='cumulus-tunnel-api-resources-stack', next_token: str=None)->list:
     stack_identifiers = list()
     client = boto3_session.client('cloudformation')
     response = dict()
