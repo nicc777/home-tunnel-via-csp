@@ -1,4 +1,3 @@
-# Adapted from https://dev.to/bowmanjd/http-calls-in-python-without-requests-or-other-external-dependencies-5aj1
 import os
 import json
 import typing
@@ -53,6 +52,7 @@ def request(
     data_as_json: bool = True,
     error_count: int = 0,
 ) -> Response:
+    # Adapted from https://dev.to/bowmanjd/http-calls-in-python-without-requests-or-other-external-dependencies-5aj1
     if not url.casefold().startswith("http"):
         raise urllib.error.URLError("Incorrect and possibly insecure protocol in url")
     method = method.upper()
