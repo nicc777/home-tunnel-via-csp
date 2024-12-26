@@ -25,8 +25,11 @@ cat <<EOF >> /tmp/stack_data_for_db
     "RecordValue": {
         "S": "{\"StackName\": \"$STACK_NAME\"}"
     },
-    "NextCommand": {
-        "S": "delete_relay_server"
+    "CommandOnTtl": {
+        "S": "delete_relay_server_stack"
+    },
+    "RecordOrigin": {
+        "S": "resource"
     }
 }
 EOF

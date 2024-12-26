@@ -440,10 +440,26 @@ Resources:
             - ec2:DeleteNetworkInterface
             - ec2:DescribeNetworkInterfaces
             Resource: '*'
+      - PolicyName: ApiGatewayKeyPolicy 
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - apigateway:GET
+            Resource: '*'
+      - PolicyName: SecretsManagerPolicy 
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource: !Ref CumulusTunnelAuthTokenSecret
 
   DynamoDbTtlExpirationHandlerLogGroup:
     Type: AWS::Logs::LogGroup
-    DependsOn: CumulusTunnelLambdaFunction
+    DependsOn: DynamoDbTtlExpirationHandler
     Properties:
       LogGroupName: 
         Fn::Join:
@@ -464,6 +480,8 @@ Resources:
       Environment:
         Variables:
           DEBUG: !Ref DebugParam
+          CREDENTIALS_SECRET_ARN: !Ref CumulusTunnelAuthTokenSecret
+          API_KEY_ID: !Ref ApiKey
           URL:
             Fn::Join:
             - ''

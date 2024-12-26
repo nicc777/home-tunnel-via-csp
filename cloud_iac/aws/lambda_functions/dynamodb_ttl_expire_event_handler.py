@@ -9,10 +9,14 @@ import json
 import logging
 import traceback
 import sys
+import boto3
+import base64
 from email.message import Message
 
 URL = os.getenv('URL', 'http://localhost/')
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
+CREDENTIALS_SECRET_ARN = os.getenv('CREDENTIALS_SECRET_ARN', 'none')        # ARN
+API_KEY_ID = os.getenv('API_KEY_ID', 'none')                                # ID
 
 
 logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
@@ -94,25 +98,121 @@ def request(
 def do_process_record(record)->bool:
     logger.debug('record: {}'.format(json.dumps(record, default=str)))
     try:
-        if 'delete' not in record['eventName'].lower():
+        if 'REMOVE' not in record['eventName'].upper():
             return False
+        logger.info('Potential record Removal Event detected...')
         if 'dynamodb' in record:
+            logger.info('Appears to be a DynamoDB record Removal Event -proceed')
             return True
-        logger.warning('This does not look like a DynamoDB Event')
+        logger.warning('This does not look like a DynamoDB Removal Event')
     except:
         logger.error('Unable to parse event - automatically will not qualify')
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
     return False
 
 
-def get_dynamodb_deleted_record(record)->dict:
+def convert_value_to_number(value:str):
+    try:
+        return int(value)
+    except:
+        logger.warning('Value "{}" does not appear to be an INT - attempting a float conversion next...'.format(value))
+    return float(value)
+
+
+def get_dynamodb_deleted_record_as_simple_dict(record)->dict:    
+    """
+    References:
+        * https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes
+        * https://blog.awsfundamentals.com/aws-dynamodb-data-types
+    Example record:
+        {
+            ...
+            "dynamodb": {
+                "ApproximateCreationDateTime": 1735214957,
+                "Keys": {
+                    ...
+                },
+                "OldImage": {
+                    "RecordTtl": {
+                        "N": "1735077600"
+                    },
+                    "RecordKey": {
+                        "S": "TestKey"
+                    },
+                    "ExampleField": {
+                        "S": "Example Value"
+                    }
+                },
+                ...
+            },
+            ...
+        }
+    """
     simplified_record = dict()
-    dynamodb_record = record['dynamodb']
-    # TODO parse deleted record and construct a simplified record
+    dynamodb_record = record['dynamodb']['OldImage']
+    for field_name, field_composite_data in dynamodb_record.items():
+        for field_value_type, field_value_raw in field_composite_data.items():
+            simplified_record[field_name] = '{}'.format(field_value_raw)
+            if field_value_type == 'N':
+                simplified_record[field_name] = convert_value_to_number(value=field_value_raw)
+            elif field_value_type in ('L', 'M', 'SS', 'NS', 'BS',) is True:
+                raise Exception('Field type "{}" is not yet supported'.format(field_value_type))
     return simplified_record
 
 
+def is_command_api_type_record(record: dict)->bool:
+    required_records = {
+        'RecordTtl': int,
+        'CommandOnTtl': str,
+        'RecordKey': str,
+        'RecordValue': str,
+        'RecordOrigin': str,
+    }
+    for key, expected_type in required_records.items():
+        if key not in record:
+            logger.warning('Expected key "{}" not present'.format(key))
+            return False
+        if isinstance(record[key], expected_type) is False:
+            logger.warning('Key "{}" type expected to be "{}" but found {}'.format(key, type(expected_type), type(record[key])))
+            return False
+    return True
+
+
+def get_api_token(api_key_id: str):
+    client = boto3.client('apigateway')
+    response = client.get_api_key(
+        apiKey=api_key_id,
+        includeValue=True
+    )
+    return response['value']
+
+
+def get_secret_value(secret_id: str)->str:
+    client = boto3.client('secretsmanager')
+    response = client.get_secret_value(SecretId=secret_id)
+    return response['SecretString']
+
+
 def handler(event, context):
+    """
+        Expected data that this function can react on (example):
+
+            {
+                "RecordTtl": 1234567890,
+                "CommandOnTtl": "delete_relay_server",
+                "RecordKey": "relay-server-stack",
+                "RecordValue": "{\"StackName\": \"test-stack\"}",
+                "RecordOrigin": "resource"
+            }
+
+        FIeld Name      Type    Description
+        ----------------------------------------------------------------------------------------------------
+        RecordTtl       int     When the record expires
+        CommandOnTtl    string  The command to post to the command API
+        RecordKey       string  Context of what this record is
+        RecordValue     string  Raw data in JSON format which will be forwarded as-is to the command API
+        RecordOrigin    string  Value can be "agent" or "resource" depending on the origin
+    """
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     if 'Records' not in event:
         return 'ok'
@@ -120,5 +220,30 @@ def handler(event, context):
         logger.debug('Evaluating if record must be processed')
         if do_process_record(record=record) is False:
             logger.warning('Ignoring Record')
-            return 'ok'
+        else:
+            data = get_dynamodb_deleted_record_as_simple_dict(record=record)
+            logger.debug('data: {}'.format(json.dumps(data, default=str)))
+            if is_command_api_type_record(record=data) is False:
+                logger.warning('No data to forward to command API was found')
+            else:
+                logger.info('Passing data on to command API')
+                origin = data.pop('RecordOrigin')
+                origin_data = {
+                    'command': None,
+                    'body': json.loads(data.pop('RecordValue'))
+                }
+                secret_value = get_secret_value(secret_id=CREDENTIALS_SECRET_ARN)
+                secret_data = json.loads(secret_value)
+                authorizer_string = '{}:{}'.format(secret_data['username'], secret_data['password'])
+                response = request(
+                    url=URL,
+                    data=origin_data,
+                    headers={
+                        'x-api-key': get_api_token(api_key_id=API_KEY_ID),
+                        'x-cumulus-tunnel-credentials': base64.b64encode(authorizer_string.encode('utf-8')).decode('utf-8'),
+                        'origin': origin,
+                    },
+                    method="POST"
+                )
+                logger.info('Command response: {}'.format(response))
     return 'ok'
