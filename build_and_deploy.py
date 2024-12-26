@@ -845,7 +845,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 * The Lambda function is in a VPC and as such:
                     * AWS API calls must be facilitated through VPC EndPoints
 
-            Since VPC ENdPoints are relatively expensive, and because the data is static, 
+            Since VPC EndPoints are relatively expensive, and because the data is static, 
             it is more cost efficient to get the data now and manually update the deployed 
             Lambda function environment variables via the AWS API's
         """
