@@ -441,6 +441,17 @@ Resources:
             - ec2:DescribeNetworkInterfaces
             Resource: '*'
 
+  DynamoDbTtlExpirationHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: CumulusTunnelLambdaFunction
+    Properties:
+      LogGroupName: 
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: DynamoDbTtlExpirationHandler
+      RetentionInDays: 7
+
   DynamoDbTtlExpirationHandler:
     Type: AWS::Lambda::Function
     Properties:
