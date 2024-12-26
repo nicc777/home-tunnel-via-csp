@@ -839,8 +839,18 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         return response['SecretString']
 
     def _set_dynamodb_lambda_function_additional_environment_variables(self):
+        """
+            This is done because:
+
+                * The Lambda function is in a VPC and as such:
+                    * AWS API calls must be facilitated through VPC EndPoints
+
+            Since VPC ENdPoints are relatively expensive, and because the data is static, 
+            it is more cost efficient to get the data now and manually update the deployed 
+            Lambda function environment variables via the AWS API's
+        """
         lambda_function_name = 'cumulus-tunnel-dynamodb-ttl-handler'
-        lambda_function_configuration = self._get_current_lambda_complete_configuration(function_name=lambda_function_name)
+        #lambda_function_configuration = self._get_current_lambda_complete_configuration(function_name=lambda_function_name)
         lambda_function_environment_variables = self._get_current_lambda_environment_variables(function_name=lambda_function_name)
         if 'CREDENTIALS_SECRET' in lambda_function_environment_variables:
             lambda_function_environment_variables.pop('CREDENTIALS_SECRET')
