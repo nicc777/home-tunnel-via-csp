@@ -220,6 +220,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         import boto3
         import boto3.session
         self.session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
+        self.dynamodb_configs = list()
 
     def prep_iac_parameters(self, target:str=None, additional_parameters: list=list()):
         parameters = copy.deepcopy(additional_parameters)
@@ -549,31 +550,40 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
             raise Exception('Failed to run required lambda prep script "{}"'.format(source_file))
         return file_name, package_name
 
-    def _register_api_command_in_dynamodb(self, command: str, sqs_url: str):
-        timestamp_now = int(datetime.now(timezone.utc))
-        record_ttl = timestamp_now + (86400*365*100) + (86400*24) # 100 years from now (including total leap days of 24) - at which time none of this will matter...
+    def _register_api_command_in_dynamodb(self):
         client = self.session.client('dynamodb')
-        response = client.put_item(
-            TableName='cumulus-tunnel',
-            Item={
-                "RecordKey": {
-                    "S": "config:api-command:{}".format(command)
+        for record in self.dynamodb_configs:
+            response = client.put_item(
+                TableName='cumulus-tunnel',
+                Item=record
+            )
+            logger.debug('response: {}'.format(json.dumps(response, default=str, indent=4)))
+
+    def _cache_sqs_config_for_dynamodb(self, command: str, sqs_url: str):
+        timestamp_now = int(datetime.now(timezone.utc).timestamp())
+        record_ttl = timestamp_now + (86400*365*100) + (86400*24) # 100 years from now (including total leap days of 24) - at which time none of this will matter...
+        record_value = {
+            'SqsUrl': '{}'.format(sqs_url)
+        }
+        self.dynamodb_configs.append(
+            {
+                'RecordKey': {
+                    'S': 'config:api-command:{}'.format(command)
                 },
-                "RecordTtl": {
-                    "N": "{}".format(record_ttl)
+                'RecordTtl': {
+                    'N': '{}'.format(record_ttl)
                 },
-                "RecordValue": {
-                    "S": "{\"SqsUrl\": \"{}\"}".format(sqs_url)
+                'RecordValue': {
+                    'S': '{}'.format(json.dumps(record_value, default=str))
                 },
-                "CommandOnTtl": {
-                    "S": "IGNORE"
+                'CommandOnTtl': {
+                    'S': 'IGNORE'
                 },
-                "RecordOrigin": {
-                    "S": "NONE"
+                'RecordOrigin': {
+                    'S': 'NONE'
                 }
             }
         )
-        logger.debug('response: {}'.format(json.dumps(response, default=str, indent=4)))
 
     def _deploy_sqs_and_lambda_functions(self):
         LAMBDA_FUNCTIONS = [
@@ -637,7 +647,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
                 if output_record['OutputKey'] == 'SqsQueueUrl':
                     sqs_url = output_record['OutputValue']
             if len(api_command_name) > 0 and len(sqs_url) > 0:
-                self._register_api_command_in_dynamodb(command=api_command_name, sqs_url=sqs_url)
+                self._cache_sqs_config_for_dynamodb(command=api_command_name, sqs_url=sqs_url)
             self.stack_outputs += new_outputs
 
     def _deploy_api_resources(self):
@@ -689,7 +699,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
     def deploy(self):
         self._deploy_sqs_and_lambda_functions()
         self._deploy_api_resources()
-        self._set_dynamodb_lambda_function_additional_environment_variables()
+        self._register_api_command_in_dynamodb()
         logger.info('OUTPUTS:')
         for output in self.stack_outputs:
             output_key = None
@@ -861,62 +871,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         response = client.get_secret_value(SecretId=secret_id)
         return response['SecretString']
 
-    def _set_dynamodb_lambda_function_additional_environment_variables(self):
-        """
-            This is done because:
 
-                * The Lambda function is in a VPC and as such:
-                    * AWS API calls must be facilitated through VPC EndPoints
-
-            Since VPC EndPoints are relatively expensive, and because the data is static, 
-            it is more cost efficient to get the data now and manually update the deployed 
-            Lambda function environment variables via the AWS API's
-        """
-        lambda_function_name = 'cumulus-tunnel-dynamodb-ttl-handler'
-        #lambda_function_configuration = self._get_current_lambda_complete_configuration(function_name=lambda_function_name)
-        lambda_function_environment_variables = self._get_current_lambda_environment_variables(function_name=lambda_function_name)
-        if 'CREDENTIALS_SECRET' in lambda_function_environment_variables:
-            lambda_function_environment_variables.pop('CREDENTIALS_SECRET')
-        if 'API_KEY' in lambda_function_environment_variables:
-            lambda_function_environment_variables.pop('API_KEY')
-
-        stack_identifiers = self._get_stack_identifiers()
-        most_recent_stack = self._parse_and_get_most_recent_stack(stack_identifiers=stack_identifiers)
-        logger.debug('most_recent_stack: {}'.format(json.dumps(most_recent_stack, default=str)))
-        resources = self._get_cloudformation_resources(stack_name=most_recent_stack['StackName'])
-        logger.debug('resources: {}'.format(json.dumps(resources, default=str)))
-        api_key_logical_id, api_key_resource_status = self._get_resource_physical_id(
-            logical_id='ApiKey', 
-            resources=resources
-        )
-        logger.debug('API Key "{}" has status "{}"'.format(api_key_logical_id, api_key_resource_status))
-        api_gateway_stage_token = self._get_api_token(api_key_id=api_key_logical_id)
-        logger.info('HEADER: x-api-key: {}'.format(api_gateway_stage_token))
-        secrets_manager_logical_id, secrets_manager_resource_status = self._get_resource_physical_id(
-            logical_id='CumulusTunnelAuthTokenSecret', 
-            resources=resources
-        )
-        logger.debug('SecretsManager "{}" has status "{}"'.format(secrets_manager_logical_id, secrets_manager_resource_status))
-        secret_value = self._get_secret_value(secret_id=secrets_manager_logical_id)
-        logger.debug('secret_value: {}'.format(secret_value))
-        secret_data = json.loads(secret_value)
-        authorizer_string = '{}:{}'.format(secret_data['username'], secret_data['password'])
-        base64_string = base64.b64encode(authorizer_string.encode('utf-8')).decode('utf-8')
-        logger.info('HEADER x-cumulus-tunnel-credentials: {}'.format(base64_string))
-
-        lambda_function_environment_variables['CREDENTIALS_SECRET'] = base64_string
-        lambda_function_environment_variables['API_KEY'] = api_gateway_stage_token
-
-        # Update Environment Variables....
-        client = self.session.client('lambda')
-        response = client.update_function_configuration(
-            FunctionName=lambda_function_name,
-            Environment={
-                'Variables': lambda_function_environment_variables
-            }
-        )
-
-        logger.debug('response: {}'.format(json.dumps(response, default=str, indent=4)))
 
 
 
