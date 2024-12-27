@@ -97,12 +97,38 @@ parser.add_argument(
     required=False
 )
 parser.add_argument(
-    '-state-file',
+    '--state-file',
     help='The full path to the state file to use. This will be a normal SQLite DB data file.',
     action='store',
     type=str,
     dest='state_file',
     default='{}{}.cumulus_tunnel_state.sqlite'.format(Path.home(), os.sep),
+    required=False
+)
+parser.add_argument(
+    '--purge-state-on-startup',
+    help='If this flag is set, the previous state will be deleted and the state from the various configuration options will be read fresh. Use this flag after any major update that could influence the state to be no longer valid. In theory you should be fine using this flag with every run.',
+    action='store_true',
+    default=False,
+    required=False,
+    dest='purge_state_on_startup'
+)
+parser.add_argument(
+    '--cloud-profile-name',
+    help='The name of the Cloud Provider Profile to use. The exact meaning may differ between various Cloud Service Providers. For AWS, this is the profile defined in the AWS CLI configuration files.',
+    action='store',
+    type=str,
+    dest='cloud_profile_name',
+    default='default',
+    required=False
+)
+parser.add_argument(
+    '--cloud-profile-region',
+    help='The region name of the Cloud Provider Profile to use.Exact names may differ between Cloud Service Providers. The default value assumes the AWS region eu-central-1 is intended.',
+    action='store',
+    type=str,
+    dest='cloud_profile_region',
+    default='eu-central-1',
     required=False
 )
 
@@ -115,6 +141,11 @@ with open(args.api_config_file_path, 'r') as f:
     configs['api_config'] = json.loads(f.read())
 with open(args.param_config_file_path, 'r') as f:
     configs['param_config'] = json.loads(f.read())
+configs['relay_server_stack_name'] = 'cumulus-tunnel-relay-server-{}-stack'.format(args.agent_identifier)
+configs['cloud_profile_name'] = args.cloud_profile_name
+configs['cloud_profile_region'] = args.cloud_profile_region
+configs['purge_state_on_startup'] = args.purge_state_on_startup
+
 
 
 

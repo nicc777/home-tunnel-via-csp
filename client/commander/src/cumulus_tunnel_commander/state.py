@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import traceback
 
 class StateManagementFunctions:
 
@@ -20,10 +21,17 @@ class StateManagementFunctions:
 
     def get_state(self, state_key: str)->str:
         cursor = self.conn.cursor()
-        for row in cursor.execute('SELECT state_value FROM state WHERE state_key = ?', (state_key,)):
-            return '{}'.format(row[0])
+        try:
+            for row in cursor.execute('SELECT state_value FROM state WHERE state_key = ?', (state_key,)):
+                self.conn.commit()
+                cursor.close()
+                return '{}'.format(row[0])
+        except:
+            self.logger.error('state_key "{}" not found'.format(state_key))
+            self.logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
         self.conn.commit()
         cursor.close()
+        return None
         
     def write_state(self, state_key: str, state_value: str):
         cursor = self.conn.cursor()
@@ -35,6 +43,12 @@ class StateManagementFunctions:
     def delete_state(self, state_key: str):
         cursor = self.conn.cursor()
         cursor.execute('DELETE FROM state WHERE state_key = ?', (state_key,))
+        self.conn.commit()
+        cursor.close()
+
+    def purger_state(self):
+        cursor = self.conn.cursor()
+        cursor.execute('DELETE FROM state')
         self.conn.commit()
         cursor.close()
 

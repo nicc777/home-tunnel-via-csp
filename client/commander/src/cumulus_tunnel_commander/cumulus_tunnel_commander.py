@@ -10,6 +10,7 @@ import ipaddress
 from datetime import datetime, timedelta
 
 import requests
+import coloredlogs
 
 from cumulus_tunnel_commander.args import args, configs
 from cumulus_tunnel_commander.state import StateManagementFunctions
@@ -28,6 +29,8 @@ DEFAULT_TEMPLATE_TARGET_NAME = '{}{}'.format(
 if args.verbose is True:
     DEBUG = True
 
+
+coloredlogs.install()
 logger = logging.getLogger('cumulus_tunnel_agent')
 logger.setLevel(logging.INFO)
 if DEBUG is True:
@@ -43,13 +46,23 @@ logger.addHandler(ch)
 logger.debug('Running on host "{}" with default relay server name "{}"'.format(HOSTNAME, DEFAULT_TEMPLATE_TARGET_NAME))
 logger.debug('configs: {}'.format(json.dumps(configs, default=str, indent=4)))
 
-state = StateManagementFunctions(state_file_path=args.state_file, logger=logger)
-
 
 class RelayServer:
 
-    def __init__(self):
-        self.state = state
+    def __init__(self, state_functions: StateManagementFunctions=StateManagementFunctions, configs: dict=dict()):
+        self.configs = configs
+        self.state_functions = state_functions
+        if self.configs['purge_state_on_startup'] is True:
+            self.configs.pop('purge_state_on_startup')
+            self.state_functions.purger_state()
+        previous_state_config = self.state_functions.get_state(state_key='state_config:{}'.format(args.agent_identifier))
+        if previous_state_config is not None:
+            logger.info('Using previously persisted state for agent identifier "{}"'.format(args.agent_identifier))
+            self.configs = json.loads(previous_state_config)
+            previous_state_config = None
+        else:
+            logger.info('Persisting configs for agent identifier "{}"'.format(args.agent_identifier))
+            state_functions.write_state(state_key='state_config:{}'.format(args.agent_identifier), state_value=json.dumps(self.configs, default=str))
 
     def prepare_api_data(self)->dict:
         raise Exception('Must be implemented by the Cloud Provider specific implementation')
@@ -66,8 +79,39 @@ class RelayServer:
 
 class AwsRelayServer(RelayServer):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, state_functions: StateManagementFunctions=StateManagementFunctions, configs: dict=dict()):
+        super().__init__(configs=configs, state_functions=state_functions)
+        import boto3
+        import boto3.session
+        self.session = boto3.session.Session(
+            profile_name=self.configs['cloud_profile_name'],
+            region_name=self.configs['cloud_profile_region']
+        )
+
+    def _get_current_cloud_formation_stack_names(self, next_token: str=None)->list:
+        stack_names = list()
+        client = self.session.client('cloudformation')
+        response = dict()
+        if next_token is not None:
+            response = client.list_stacks(NextToken=next_token)
+        else:
+            response = client.list_stacks()
+        if 'NextToken' in response:
+            stack_names += self._list_cloudformation_stacks(next_token=response['NextToken'])
+        if 'StackSummaries' in response:
+            for stack_summary in response['StackSummaries']:
+                if 'StackName' in stack_summary:
+                    if 'DELETE' not in stack_summary['StackStatus']:
+                        if stack_summary['StackName'] not in stack_names:
+                            stack_names.append(stack_summary['StackName'])
+                    else:
+                        logger.warning(
+                            'Previous version of stack named "{}" found, but ignored as it is in a "{}" state.'.format(
+                                stack_summary['StackName'],
+                                stack_summary['StackStatus']
+                            )
+                        )
+        return stack_names
 
     def prepare_api_data(self)->dict:
         logger.info('Preparing API data')
@@ -75,6 +119,14 @@ class AwsRelayServer(RelayServer):
 
     def is_relay_server_created(self)->bool:
         logger.info('Checking if the relay server has already been created.')
+        current_cloudformation_stack_names = self._get_current_cloud_formation_stack_names()
+        if 'cumulus-tunnel-api-resources-stack' not in current_cloudformation_stack_names:
+            logger.error('It appears the Cumulus Tunnel API resources have not yet been created in this region: {}'.format(self.configs['cloud_profile_region']))
+            raise Exception('It appears the Cumulus Tunnel API resources have not yet been created in this region: {}'.format(self.configs['cloud_profile_region']))
+        if self.configs['relay_server_stack_name'] in current_cloudformation_stack_names:
+            logger.info('  Stack "{}" has been created previously'.format(self.configs['relay_server_stack_name']))
+            return True
+        logger.info('  Stack "{}" has NOT been created'.format(self.configs['relay_server_stack_name']))
         return False
     
     def create_relay_server(self, api_data:dict):
@@ -106,7 +158,13 @@ def agent_main():
         raise Exception('Requested Cloud provider "{}" is not yet supported.'.format(args.target_cloud_sp))
 
     relay_server: RelayServer
-    relay_server = SUPPORTED_CLOUD_SERVICE_PROVIDERS[args.target_cloud_sp]()
+    relay_server = SUPPORTED_CLOUD_SERVICE_PROVIDERS[args.target_cloud_sp](
+        state_functions=StateManagementFunctions(
+            state_file_path=args.state_file,
+            logger=logger
+        ),
+        configs=copy.deepcopy(configs)
+    )
 
     if args.delete_relay_server is True:
         if relay_server.is_relay_server_created() is True:
