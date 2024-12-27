@@ -98,6 +98,10 @@ python3 build_and_deploy.py                         \
 --param_base_domain_name=$PARAM_DOMAIN_NAME         \
 --param_aws_route53_zone_id=$PARAM_ROUTE53_ZONE_ID  \
 --param_aws_acm_arn=$PARAM_ACM_ARN
+
+cp -vf /tmp/cumulus_tunnel_api.json $HOME/.cumulus_tunnel_api.json
+
+cp -vf /tmp/cumulus_tunnel_standard_api_parameters.json $HOME/.cumulus_tunnel_standard_api_parameters.json
 ```
 
 # API Command Structures

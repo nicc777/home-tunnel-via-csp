@@ -11,7 +11,6 @@ import traceback
 import subprocess
 import copy
 import tempfile
-import base64
 
 
 parser = argparse.ArgumentParser(
@@ -208,6 +207,100 @@ class CloudServiceProviderBase:
     
     def prep_iac_parameters(self, target:str=None, additional_parameters: dict=dict()):
         raise Exception('Must be implemented by CSP class')
+    
+    def create_standard_api_parameters_config(self):
+        temp_dir = tempfile.gettempdir()
+        config_file = '{}{}cumulus_tunnel_standard_api_parameters.json'.format(temp_dir, os.sep)
+        config_data = {
+            'build_parameter_values': {
+                'target_cloud_sp': self.args.target_cloud_sp,
+                'artifact_location': self.args.artifact_location,
+                'param_vpc_id': self.args.param_vpc_id,
+                'param_vpc_cidr': self.args.param_vpc_cidr,
+                'param_public_subnet_id_1': self.args.param_public_subnet_id_1,
+                'param_public_subnet_id_2': self.args.param_public_subnet_id_2,
+                'param_public_subnet_id_3': self.args.param_public_subnet_id_3,
+                'debug_parameter': '1',
+                'param_relay_vm_identifier': self.args.param_relay_vm_identifier,
+                'param_base_domain_name': self.args.param_base_domain_name,
+                'param_aws_route53_zone_id': self.args.param_aws_route53_zone_id,
+                'param_aws_acm_arn': self.args.param_aws_acm_arn,
+            },
+            'build_parameters_to_template_parameter_mapping': {
+                'aws': {
+                    'artifact_location': {
+                        'parameter_name': 'ArtifactBucketNameParam',
+                        'parameter_type': 'str',
+                    },
+                    'param_vpc_id': {
+                        'parameter_name': 'VpcId1Param',
+                        'parameter_type': 'str',
+                    },
+                    'param_vpc_cidr': {
+                        'parameter_name': 'VpcCidrParam',
+                        'parameter_type': 'str',
+                    },
+                    'param_public_subnet_id_1': {
+                        'parameter_name': 'SubnetId1Param',
+                        'parameter_type': 'str',
+                    },
+                    'param_public_subnet_id_2': {
+                        'parameter_name': 'SubnetId2Param',
+                        'parameter_type': 'str',
+                    },
+                    'param_public_subnet_id_3': {
+                        'parameter_name': 'SubnetId3Param',
+                        'parameter_type': 'str',
+                    },
+                    'debug_parameter': {
+                        'parameter_name': 'DebugParam',
+                        'parameter_type': 'str',
+                    },
+                    'param_relay_vm_identifier': {
+                        'parameter_name': 'CumulusTunnelAmiIdParam',
+                        'parameter_type': 'str',
+                    },
+                    'param_base_domain_name': {
+                        'parameter_name': 'DefaultRoute53DomainParam',
+                        'parameter_type': 'str',
+                    },
+                    'param_aws_route53_zone_id': {
+                        'parameter_name': 'DefaultRoute53ZoneIdParam',
+                        'parameter_type': 'str',
+                    },
+                    'param_aws_acm_arn': {
+                        'parameter_name': 'DomainCertificateArnParam',
+                        'parameter_type': 'str',
+                    },
+                }
+            },
+            'additional_parameter_overrides': {
+                'aws': [
+                    {
+                        "parameter_name": "ManagementDomainRecordParam",
+                        "parameter_type": "str",
+                        "parameter_value": "cumulus-tunnel-admin"
+                    },
+                    {
+                        "parameter_name": "Ec2InstanceTypeParam",
+                        "parameter_type": "str",
+                        "parameter_value": "t4g.nano"
+                    },
+                    {
+                        "parameter_name": "RelayServerTtlHoursParam",
+                        "parameter_type": "str",
+                        "parameter_value": "12"
+                    },
+                ]
+            }
+        }
+        with open(config_file, 'w') as f:
+            f.write('{}'.format(json.dumps(config_data, default=str, indent=4)))
+
+        logger.info('Standard API Parameter CONFIG FILE written to "{}"'.format(config_file))
+        logger.info('   You can edit/override a number of values in this file.')
+        logger.info('Copy the config file to the resource server(s) and agent(s)')
+        logger.info('NEXT run the "get_api_tokens.py" script to create the API configuration')
 
 
 class AwsCloudServiceProvider(CloudServiceProviderBase):
@@ -925,9 +1018,6 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         return response['SecretString']
 
 
-
-
-
 SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
     'aws': AwsCloudServiceProvider
 }
@@ -963,6 +1053,7 @@ def main():
         logger.info('Building packages and preparing artifacts')
         sp_class_instance.build()
         sp_class_instance.deploy()
+        sp_class_instance.create_standard_api_parameters_config()
     else:
         logger.error(
             'Cloud Service Provider "{}" not yet implemented or supported. Supported options: {}'.format(
