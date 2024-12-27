@@ -6,6 +6,8 @@ import traceback
 import sys
 import socket
 from email.message import Message
+import boto3
+from boto3.dynamodb.conditions import Attr
 
 URL = os.getenv('URL', 'http://localhost/')
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
@@ -24,6 +26,65 @@ if DEBUG is True:
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(funcName)s:%(lineno)d -  %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+
+
+def scan_dynamodb_table(table_name, filter_expression=None, expression_attribute_values=None):
+    # This code obtained via Google Gemini - Slightly modified, but seems to work ok
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(table_name)
+    scan_kwargs = {}
+    if filter_expression:
+        scan_kwargs['FilterExpression'] = filter_expression
+    if expression_attribute_values:
+      scan_kwargs['ExpressionAttributeValues'] = expression_attribute_values
+    try:
+        response = table.scan(**scan_kwargs)
+        items = response['Items']
+        while 'LastEvaluatedKey' in response:
+            scan_kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+            response = table.scan(**scan_kwargs)
+            items.extend(response['Items'])
+        return items, None
+    except Exception as e:
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        return None, str(e)
+
+
+class CommandConfig:
+
+    def __init__(self):
+        self.config = dict()
+        self.get_api_command_config_from_dynamodb()
+
+    def get_api_command_config_from_dynamodb(self)->dict:
+        self.config = dict()
+        filter_expression = Attr('RecordKey').begins_with('config:api-command:')
+        items, error = scan_dynamodb_table(table_name='cumulus-tunnel', filter_expression=filter_expression)
+        if error:
+            logger.error('DynamoDB Scan Error: {}'.format(error))
+            raise Exception(error)
+        else:
+            logger.debug('items: {}'.format(json.dumps(items, default=str)))
+            for item in items:
+                if 'RecordValue' in item and 'RecordKey' in item:
+                    record_key = item['RecordKey']
+                    command = record_key.split(':')[-1]
+                    if command not in self.config:
+                        record_value_data = json.loads(item['RecordValue'])
+                        if 'SqsUrl' in record_value_data:
+                            self.config[command] = record_value_data['SqsUrl']
+        logger.info('CONFIG: {}'.format(json.dumps(self.config, default=str)))
+                    
+
+    def get_sqs_url_for_command(self, command: str)->str:
+        if command not in self.config:
+            self.get_api_command_config_from_dynamodb()
+            if command not in self.config:
+                raise Exception('Command "{}" not configured'.format(command))
+        return self.config[command]
+
+
+command_config_cache = CommandConfig()
 
 
 def do_process_record(record)->bool:
@@ -142,11 +203,13 @@ def handler(event, context):
             if is_command_api_type_record(record=data) is False:
                 logger.warning('No data to forward to command API was found')
             else:
-                logger.info('Passing data on to command API')
+                command = data['CommandOnTtl']
+                sqs_queue = command_config_cache.get_sqs_url_for_command(command=command)
+                logger.info('Passing data for command "{}" on to SQS Queue "{}"'.format(command, sqs_queue))
                 origin = data.pop('RecordOrigin')
                 origin_data = {
-                    'command': data['CommandOnTtl'],
-                    'body': json.loads(data['RecordValue']),
+                    'command': command,
+                    'command_parameters': json.loads(data['RecordValue']),
                 }
                 # TODO Post to SQS as if it is from the API Gateway.... Mimic the Proxy Request...
                 

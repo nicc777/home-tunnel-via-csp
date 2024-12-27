@@ -100,3 +100,142 @@ python3 build_and_deploy.py                         \
 --param_aws_acm_arn=$PARAM_ACM_ARN
 ```
 
+# API Command Structures
+
+## General Format
+
+Schema:
+
+```json
+{
+  "command": "string",
+  "command_parameters": [
+    {
+      "parameter_name": "string",
+      "parameter_type": "string",
+      "parameter_value": "string"
+    }
+  ]
+}
+```
+
+## Resource Server Commands
+
+### Create a new Relay
+
+Example:
+
+```json
+{
+  "command": "create_relay_server",
+  "command_parameters": [
+    {
+      "parameter_name": "ArtifactBucketNameParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "VpcId1Param",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "VpcCidrParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "SubnetId1Param",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "SubnetId2Param",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "SubnetId3Param",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "DebugParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "CumulusTunnelAmiIdParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "DefaultRoute53ZoneIdParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "DefaultRoute53DomainParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "ManagementDomainRecordParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "DomainCertificateArnParam",
+      "parameter_type": "str",
+      "parameter_value": "..."
+    },
+    {
+      "parameter_name": "Ec2InstanceTypeParam",
+      "parameter_type": "str",
+      "parameter_value": "t4g.nano"
+    },
+    {
+      "parameter_name": "RelayServerTtlHoursParam",
+      "parameter_type": "str",
+      "parameter_value": "12"
+    }
+  ]
+}
+```
+
+### Delete an Existing Relay
+
+Example:
+
+```json
+{
+  "command": "delete_relay_server_stack",
+  "command_parameters": [
+    {
+      "parameter_name": "stack_name",
+      "parameter_type": "str",
+      "parameter_value": "...."
+    }
+  ]
+}
+```
+
+## Agent Commands
+
+### Register a new agent
+
+Example:
+
+```json
+{
+  "command": "string",
+  "command_parameters": [
+    {
+      "parameter_name": "string",
+      "parameter_type": "string",
+      "parameter_value": "string"
+    }
+  ]
+}
+```
+

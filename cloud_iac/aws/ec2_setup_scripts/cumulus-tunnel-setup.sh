@@ -8,8 +8,8 @@ apt install -y nginx net-tools socat python3 python3-venv python3-boto3 python3-
 sleep 5
 systemctl stop nginx
 rm -vf /etc/nginx/sites-enabled/default
-aws s3 cp s3://nicc777-artifacts-eu-central-1/etc/nginx/sites-enabled/admin /etc/nginx/sites-enabled/admin 
-aws s3 cp s3://nicc777-artifacts-eu-central-1/var/www/html/index.html /var/www/html/index.html
+aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/nginx/sites-enabled/admin /etc/nginx/sites-enabled/admin 
+aws s3 cp s3://$ARTIFACT_BUCKET_NAME/var/www/html/index.html /var/www/html/index.html
 systemctl start nginx
 
 export EXPIRE_TTL=`date -u -d "${SERVER_TTL} hours" +%s`
@@ -23,7 +23,7 @@ cat <<EOF > /tmp/stack_data_for_db
         "N": "${EXPIRE_TTL}"
     },
     "RecordValue": {
-        "S": "{\"StackName\": \"$STACK_NAME\"}"
+        "S": "{\"parameter_name\": \"stack_name\", \"parameter_type\": \"str\", \"parameter_value\": \"$STACK_NAME\"}"
     },
     "CommandOnTtl": {
         "S": "delete_relay_server_stack"

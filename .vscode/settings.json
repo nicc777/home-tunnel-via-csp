@@ -6,6 +6,7 @@
         "casefold",
         "doseq",
         "errorfactory",
+        "fastapi",
         "getenv",
         "gethostname",
         "httprequest",
@@ -19,7 +20,8 @@
         "startswith",
         "urlencode",
         "urllib",
-        "urlopen"
+        "urlopen",
+        "venv"
     ],
     "yaml.customTags": [
         "!Sub scalar",
