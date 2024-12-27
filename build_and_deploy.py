@@ -222,6 +222,48 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         self.session = boto3.session.Session(profile_name=self.args.csp_profile, region_name=self.args.csp_region)
         self.dynamodb_configs = list()
 
+    def _dynamodb_delete_items_by_filter(self, table_name, filter_expression, expression_attribute_values=None):
+        # Based on a Google Gemini example....
+        dynamodb = self.session.resource('dynamodb')
+        table = dynamodb.Table(table_name)
+        deleted_count = 0
+
+        try:
+            scan_kwargs = {}
+            if isinstance(filter_expression, str):
+                scan_kwargs['FilterExpression'] = filter_expression
+                if expression_attribute_values:
+                    scan_kwargs['ExpressionAttributeValues'] = expression_attribute_values
+            else:
+                scan_kwargs['FilterExpression'] = filter_expression
+
+            while True:
+                response = table.scan(**scan_kwargs)
+                items = response.get('Items', [])
+
+                if not items:
+                    break
+
+                with table.batch_writer() as batch:
+                    for item in items:
+                        key = {}
+                        for key_schema_element in table.key_schema:
+                            key_attribute = key_schema_element['AttributeName']
+                            key[key_attribute] = item[key_attribute]
+                        batch.delete_item(Key=key)
+                        deleted_count += 1
+
+                if 'LastEvaluatedKey' in response:
+                    scan_kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+                else:
+                    break
+
+            return deleted_count, None
+
+        except Exception as e:
+            logger.error('EXCEPTION: {}'.format(traceback.format_exc()))
+            return 0, str(e)
+
     def prep_iac_parameters(self, target:str=None, additional_parameters: list=list()):
         parameters = copy.deepcopy(additional_parameters)
         # Adding standard parameters
@@ -551,6 +593,17 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         return file_name, package_name
 
     def _register_api_command_in_dynamodb(self):
+        from boto3.dynamodb.conditions import Attr
+        filter_expression = Attr('RecordKey').begins_with('config:api-command:')
+        deleted_count, error = self._dynamodb_delete_items_by_filter(table_name='cumulus-tunnel', filter_expression=filter_expression)
+        if error:
+            logger.error('ERROR deleting prior DynamoDB records: {}'.format(error))
+            logger.warning('Will still attempt to insert records, but be aware duplicate entries may be a result')
+        else:
+            if deleted_count > 0:
+                logger.info('Deleted {} prior configurations'.format(deleted_count))
+            else:
+                logger.info('No prior configurations found')
         client = self.session.client('dynamodb')
         for record in self.dynamodb_configs:
             response = client.put_item(
