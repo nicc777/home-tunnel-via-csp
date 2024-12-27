@@ -247,6 +247,7 @@ Resources:
   # Permissions Configuration
   ApiGwLambdaRole:
     Type: AWS::IAM::Role
+    DependsOn: CumulusTunnelDynamodbTable
     Properties: 
       AssumeRolePolicyDocument: 
         Version: '2012-10-17'
@@ -277,6 +278,14 @@ Resources:
             - sqs:GetQueueUrl
             - sqs:SendMessage
             Resource: "*"
+      - PolicyName: !Sub ${AWS::StackName}-dynamodb
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - dynamodb:Scan
+            Resource: !GetAtt CumulusTunnelDynamodbTable.Arn
 
   LambdaAuthorizerIAMRole: 
     Type: AWS::IAM::Role

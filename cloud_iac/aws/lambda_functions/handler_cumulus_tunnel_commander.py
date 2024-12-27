@@ -3,8 +3,9 @@ import os
 import sys
 import json
 import copy
-import boto3
 import traceback
+import boto3
+from boto3.dynamodb.conditions import Attr
 
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
@@ -27,6 +28,65 @@ logger.addHandler(ch)
 # Silence most of boto3 library logging
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
+
+
+def scan_dynamodb_table(table_name, filter_expression=None, expression_attribute_values=None):
+    # This code obtained via Google Gemini - Slightly modified, but seems to work ok
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(table_name)
+    scan_kwargs = {}
+    if filter_expression:
+        scan_kwargs['FilterExpression'] = filter_expression
+    if expression_attribute_values:
+      scan_kwargs['ExpressionAttributeValues'] = expression_attribute_values
+    try:
+        response = table.scan(**scan_kwargs)
+        items = response['Items']
+        while 'LastEvaluatedKey' in response:
+            scan_kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+            response = table.scan(**scan_kwargs)
+            items.extend(response['Items'])
+        return items, None
+    except Exception as e:
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        return None, str(e)
+
+
+class CommandConfig:
+
+    def __init__(self):
+        self.config = dict()
+        self.get_api_command_config_from_dynamodb()
+
+    def get_api_command_config_from_dynamodb(self)->dict:
+        self.config = dict()
+        filter_expression = Attr('RecordKey').begins_with('config:api-command:')
+        items, error = scan_dynamodb_table(table_name='cumulus-tunnel', filter_expression=filter_expression)
+        if error:
+            logger.error('DynamoDB Scan Error: {}'.format(error))
+            raise Exception(error)
+        else:
+            logger.debug('items: {}'.format(json.dumps(items, default=str)))
+            for item in items:
+                if 'RecordValue' in item and 'RecordKey' in item:
+                    record_key = item['RecordKey']
+                    command = record_key.split(':')[-1]
+                    if command not in self.config:
+                        record_value_data = json.loads(item['RecordValue'])
+                        if 'SqsUrl' in record_value_data:
+                            self.config[command] = record_value_data['SqsUrl']
+        logger.info('CONFIG: {}'.format(json.dumps(self.config, default=str)))
+                    
+
+    def get_sqs_url_for_command(self, command: str)->str:
+        if command not in self.config:
+            self.get_api_command_config_from_dynamodb()
+            if command not in self.config:
+                raise Exception('Command "{}" not configured'.format(command))
+        return self.config[command]
+
+
+command_config_cache = CommandConfig()
 
 
 def format_response(status_code: int=200, body: dict=dict()):
@@ -71,12 +131,10 @@ def validate_resource_server_command(command_body: dict):
 def parse_event(event):
     client_context = get_command_agent_context(event=event)
     command_body = get_command_body(event=event)
-    
     if client_context == 'agent':
         validate_agent_command(command_body=command_body)
     else:
         validate_resource_server_command(command_body=command_body)
-
     return client_context, command_body
 
 
