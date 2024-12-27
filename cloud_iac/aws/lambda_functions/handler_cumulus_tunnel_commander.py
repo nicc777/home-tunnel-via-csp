@@ -58,9 +58,10 @@ def get_command_body(event)->dict:
 
 def validate_agent_command(command_body: dict):
     logger.debug('Validating AGENT command: {}'.format(json.dumps(command_body, default=str)))
-    for key in ('NatAddressData', 'ExtraIpAddressData', 'AgentId', 'RelayId'):
-        if key not in command_body:
-            raise Exception('Key "{}" not found in agent submitted data. Cannot proceed.'.format(key))
+    if 'echo' not in command_body:
+        for key in ('NatAddressData', 'ExtraIpAddressData', 'AgentId', 'RelayId'):
+            if key not in command_body:
+                raise Exception('Key "{}" not found in agent submitted data. Cannot proceed.'.format(key))
 
 
 def validate_resource_server_command(command_body: dict):
@@ -96,14 +97,14 @@ def lambda_handler(event, context):
     command_body = None
     try:
         client_context, command_body = parse_event(event=event)
+        if 'echo' in command_body:
+            logger.info('ECHO command - returning to the client with the submitted text')
+            return format_response(status_code=200, body={'echo-response': '{}'.format(command_body['echo'])})
         if client_context is not None:
             if client_context == 'agent':
                 return process_agent_command(command_body=command_body)
             else:
                 return process_resource_server_command(command_body=command_body)
-        elif 'echo' in command_body:
-            logger.info('ECHO command - returning to the client with the submitted text')
-            return format_response(status_code=200, body={'echo-response': '{}'.format(command_body['echo'])})
     except:
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
 
