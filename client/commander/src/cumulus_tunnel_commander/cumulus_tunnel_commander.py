@@ -29,19 +29,16 @@ DEFAULT_TEMPLATE_TARGET_NAME = '{}{}'.format(
 if args.verbose is True:
     DEBUG = True
 
+SELECTED_LOG_LEVEL = logging.INFO
+if DEBUG is True:
+    SELECTED_LOG_LEVEL = logging.DEBUG
 
-coloredlogs.install()
+coloredlogs.install(SELECTED_LOG_LEVEL, fmt='%(asctime)s -  %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
 logger = logging.getLogger('cumulus_tunnel_agent')
-logger.setLevel(logging.INFO)
-if DEBUG is True:
-    logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.INFO)
-if DEBUG is True:
-    ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+
+# Silence most of boto3 library logging
+logging.getLogger('boto3').setLevel(logging.CRITICAL)
+logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 logger.debug('Running on host "{}" with default relay server name "{}"'.format(HOSTNAME, DEFAULT_TEMPLATE_TARGET_NAME))
 logger.debug('configs: {}'.format(json.dumps(configs, default=str, indent=4)))
