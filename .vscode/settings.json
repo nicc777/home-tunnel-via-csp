@@ -4,6 +4,7 @@
         "boto",
         "botocore",
         "casefold",
+        "coloredlogs",
         "doseq",
         "errorfactory",
         "fastapi",

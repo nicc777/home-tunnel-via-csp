@@ -12,6 +12,8 @@ import subprocess
 import copy
 import tempfile
 
+import coloredlogs
+
 
 parser = argparse.ArgumentParser(
     prog='build_and_deploy',
@@ -148,17 +150,12 @@ DEBUG = args.verbose
 
 #region logger
 
+SELECTED_LOG_LEVEL = logging.INFO
+if DEBUG is True:
+    SELECTED_LOG_LEVEL = logging.DEBUG
+
+coloredlogs.install(SELECTED_LOG_LEVEL, fmt='%(asctime)s -  %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
 logger = logging.getLogger('cumulus_tunnel_build_and_deploy')
-logger.setLevel(logging.INFO)
-if DEBUG is True:
-    logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.INFO)
-if DEBUG is True:
-    ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 #endregion logger

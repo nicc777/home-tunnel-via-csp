@@ -7,6 +7,8 @@ import boto3
 import tempfile
 import base64
 
+import coloredlogs
+
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
 AWS_PROFILE = os.getenv('AWS_PROFILE', 'default')
@@ -15,18 +17,12 @@ AWS_REGION = os.getenv('AWS_REGION', 'eu-central-1')
 
 boto3_session = boto3.session.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
 
+SELECTED_LOG_LEVEL = logging.INFO
+if DEBUG is True:
+    SELECTED_LOG_LEVEL = logging.DEBUG
 
+coloredlogs.install(SELECTED_LOG_LEVEL, fmt='%(asctime)s -  %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
 logger = logging.getLogger('cumulus_tunnel_build_and_deploy')
-logger.setLevel(logging.INFO)
-if DEBUG is True:
-    logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.INFO)
-if DEBUG is True:
-    ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 def get_stack_identifiers(name: str='cumulus-tunnel-api-resources-stack', next_token: str=None)->list:
