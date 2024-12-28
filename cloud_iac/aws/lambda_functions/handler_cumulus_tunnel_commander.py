@@ -138,14 +138,17 @@ def parse_event(event):
     return client_context, command_body
 
 
-def process_agent_command(command_body: dict):
-    
+def process_command_and_submit_to_sqs(command_body: dict):
+    sqs_url = command_config_cache.get_sqs_url_for_command(command=command_body['command'])
+    logger.debug('sqs_url: {}'.format(sqs_url))
+    client = boto3.client('sqs')
+    response = client.send_message(
+        QueueUrl=sqs_url,
+        MessageBody='{}'.format(json.dumps(command_body['command_parameters']))
+    )
+    logger.debug('response: {}'.format(json.dumps(response, default=str)))
+    logger.info('Message ID: {}'.format(response['MessageId']))
     return format_response(status_code=202, body={'agent-command-response': 'successfully queued command for execution'})
-
-
-def process_resource_server_command(command_body: dict):
-    
-    return format_response(status_code=202, body={'resource-server-command-response': 'successfully queued command for execution'})
 
 
 def lambda_handler(event, context):
@@ -159,10 +162,7 @@ def lambda_handler(event, context):
             logger.info('ECHO command - returning to the client with the submitted text')
             return format_response(status_code=200, body={'echo-response': '{}'.format(command_body['echo'])})
         if client_context is not None:
-            if client_context == 'agent':
-                return process_agent_command(command_body=command_body)
-            else:
-                return process_resource_server_command(command_body=command_body)
+            return process_command_and_submit_to_sqs(command_body=command_body)
     except:
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
 

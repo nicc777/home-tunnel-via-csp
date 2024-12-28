@@ -78,7 +78,7 @@ Resources:
   SqsQueue: 
     Type: AWS::SQS::Queue
     Properties: 
-      MaximumMessageSize: 1024
+      MaximumMessageSize: 102400
       MessageRetentionPeriod: 86400
       QueueName: !Ref QueueNameParam
       VisibilityTimeout: 300
