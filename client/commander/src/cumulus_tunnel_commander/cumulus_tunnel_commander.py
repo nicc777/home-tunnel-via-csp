@@ -44,6 +44,32 @@ logger.debug('Running on host "{}" with default relay server name "{}"'.format(H
 logger.debug('configs: {}'.format(json.dumps(configs, default=str, indent=4)))
 
 
+def make_post_request(url, data, headers):
+    # Based on example code from Google Gemini AI
+    if 'origin' not in data:
+        logger.warning('Adding origin for resource')
+        headers['origin'] = 'resource'
+    else:
+        if headers['origin'] != 'resource':
+            logger.warning('Changing origin for resource')
+            headers['origin'] = 'resource'
+    logger.debug('url     : {}'.format(url))
+    logger.debug('data    : {}'.format(json.dumps(data, default=str)))
+    logger.debug('headers : {}'.format(json.dumps(headers, default=str)))
+    try:
+        response = requests.post(url, json=data, headers=headers)
+        status_code = response.status_code
+        response_text = response.text
+        try:
+            json_response = response.json()
+        except json.JSONDecodeError:
+            json_response = None
+            logger.warning('Returned data does not appear to be JSON: {}'.format(response_text))
+        return status_code, json_response, response_text, None
+    except requests.exceptions.RequestException as e:
+        return None, None, None, str(e)
+
+
 class RelayServer:
 
     def __init__(self, state_functions: StateManagementFunctions=StateManagementFunctions, configs: dict=dict()):
@@ -59,7 +85,10 @@ class RelayServer:
             previous_state_config = None
         else:
             logger.info('Persisting configs for agent identifier "{}"'.format(args.agent_identifier))
-            state_functions.write_state(state_key='state_config:{}'.format(args.agent_identifier), state_value=json.dumps(self.configs, default=str))
+            state_functions.write_state(
+                state_key='state_config:{}'.format(args.agent_identifier),
+                state_value=json.dumps(self.configs, default=str)
+            )
 
     def prepare_api_data(self)->dict:
         raise Exception('Must be implemented by the Cloud Provider specific implementation')
@@ -135,7 +164,16 @@ class AwsRelayServer(RelayServer):
                 'StackParameters': api_data,
             },
         }
-        pass
+        status_code, json_response, response_text, err_msg = make_post_request(
+            url=self.configs['api_config']['ApiUrl'],
+            data=data,
+            headers=self.configs['api_config']['Headers']
+        )
+        logger.info('REST API Call Result : {}'.format(status_code))
+        logger.debug('json_response        : ({}) {}'.format(type(json_response), json_response))
+        logger.debug('response_text        : ({}) {}'.format(type(response_text), response_text))
+        logger.debug('err_msg              : ({}) {}'.format(type(err_msg), err_msg))
+        # Loop and check status until stack is created (or fails to create)
 
     def delete_relay_server_and_block_until_done(self, timeout: int=1800):
         logger.info('Deleting relay server stack "{}"'.format(self.configs['relay_server_stack_name']))
