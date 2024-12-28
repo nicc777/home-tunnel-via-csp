@@ -40,5 +40,23 @@ def handler(event, context):
         for record in event['Records']:
             command_data = extract_body_as_dict_from_event_record(record=record)
             logger.debug('command_data: {}'.format(json.dumps(command_data, default=str)))
+
+            """
+            command_data:
+            ------------
+
+                {
+                    "StackName": "cumulus-tunnel-relay-server-test-relay-stack",
+                    "StackParameters": [
+                        {
+                            "parameter_name": "ArtifactBucketNameParam",
+                            "parameter_type": "str",
+                            "parameter_value": "..."
+                        },
+                        .....
+                    ]
+                }
+            """
+
     return "ok"
 
