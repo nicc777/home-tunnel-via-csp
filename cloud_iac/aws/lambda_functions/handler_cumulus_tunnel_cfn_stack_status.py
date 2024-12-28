@@ -75,22 +75,46 @@ def get_stack_status(stack_name: str, next_token: str=None):
         else:
             logger.error('Unrecognized response: {}'.format(response))
         return status, status_reason
-    except:
+    except Exception as e:
         logger.error('Failed to get stack status for stack "{}"'.format(stack_name))
+        logger.error('Exception Message: {}'.format(str(e)))
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        if '{} does not exist'.format(stack_name) in str(e):
+            return 'NOT_FOUND', '{}'.format(str(e))
+    return 'UNKNOWN', 'An error occurred when trying to retrieve the status.'
 
 
 def handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     command_body = get_command_body(event=event)
-
     """
-    {
-        'command': 'get_stack_status',
-        'command_parameters': {
-            'StackName': self.configs['relay_server_stack_name'],
-        },
-    }
+        Expected command_body structure:
+
+            {
+                'command': '...',
+                'command_parameters': {
+                    'StackName': '...',
+                },
+            }
+
+        Supported Commands:
+        ==================================================================================================
+
+            Command: get_stack_status
+                     ----------------
+            
+            Parameters:
+                
+                StackName       REQUIRED, STR, The CloudFOrmation stack name to get the status for
+
+            Example:
+
+                {
+                    'command': 'get_stack_status',
+                    'command_parameters': {
+                        'StackName': '...',
+                    },
+                }
     """
     if 'command' in command_body:
         if command_body['command'] == 'get_stack_status':
