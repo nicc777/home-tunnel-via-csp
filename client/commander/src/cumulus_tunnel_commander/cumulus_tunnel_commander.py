@@ -139,9 +139,35 @@ class AwsRelayServer(RelayServer):
                         )
         return stack_names
 
-    def prepare_api_data(self)->dict:
+    def prepare_api_data(self)->list:
         logger.info('Preparing API data')
-        pass
+        param_config_cache = self.configs['param_config']
+        build_parameter_values = param_config_cache['build_parameter_values']
+        build_parameters_to_template_parameter_mapping = param_config_cache['build_parameters_to_template_parameter_mapping']['aws']
+        additional_parameter_overrides = param_config_cache['additional_parameter_overrides']['aws']
+        final_parameters = list()
+        for param_name, param_value in build_parameter_values.items():
+            if param_name in build_parameters_to_template_parameter_mapping:
+                final_parameters.append(
+                    {
+                        'parameter_name': build_parameters_to_template_parameter_mapping[param_name]['parameter_name'],
+                        'parameter_type': build_parameters_to_template_parameter_mapping[param_name]['parameter_type'],
+                        'parameter_value': param_value
+                    }
+                )
+        for override_record in additional_parameter_overrides:
+            match_found = False
+            match_index = 9999
+            current_index = 0
+            for interim_param_record in final_parameters:
+                if interim_param_record['parameter_name'] == override_record['parameter_name'] is True:
+                    match_found = True
+                    match_index = current_index
+                current_index += 1
+            if match_found is True:
+                final_parameters.pop(match_index)
+            final_parameters.append(override_record)
+        return final_parameters
 
     def is_relay_server_created(self)->bool:
         logger.info('Checking if the relay server has already been created.')
@@ -169,11 +195,13 @@ class AwsRelayServer(RelayServer):
             data=data,
             headers=self.configs['api_config']['Headers']
         )
-        logger.info('REST API Call Result : {}'.format(status_code))
+        logger.info('REST API Call Result : {} --> {}'.format(status_code,response_text))
         logger.debug('json_response        : ({}) {}'.format(type(json_response), json_response))
         logger.debug('response_text        : ({}) {}'.format(type(response_text), response_text))
         logger.debug('err_msg              : ({}) {}'.format(type(err_msg), err_msg))
-        # Loop and check status until stack is created (or fails to create)
+        if status_code is None:
+            raise Exception('FAILED to create resource server stack')
+        # TODO Loop and check status until stack is created (or fails to create)
 
     def delete_relay_server_and_block_until_done(self, timeout: int=1800):
         logger.info('Deleting relay server stack "{}"'.format(self.configs['relay_server_stack_name']))
@@ -227,10 +255,16 @@ def agent_main():
     while do_loop:
         logger.info('Main loop running')
 
-        if relay_server.is_relay_server_created() is False:
-            relay_server.create_relay_server(
-                api_data=relay_server.prepare_api_data()
-            )
+        try:
+            if relay_server.is_relay_server_created() is False:
+                relay_server.create_relay_server(
+                    api_data=relay_server.prepare_api_data()
+                )
+        except Exception as e:
+            logger.error(str(e))
+            logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+            if args.run_once is False:
+                logger.warning('The request to create the resource will be attempted again in the next loop.')
         
         if args.run_once is True:
             logger.info('Main loop DONE due to --run-once flag been true')
