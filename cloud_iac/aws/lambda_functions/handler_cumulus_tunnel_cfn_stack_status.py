@@ -98,6 +98,12 @@ def handler(event, context):
             if 'command_parameters' in command_body:
                 if 'StackName' in command_body['command_parameters']:
                     stack_name = command_body['command_parameters']['StackName']
+                else:
+                    logger.error('Expected Field "StackName" not found')
+                    logger.error('command_body: {}'.format(json.dumps(command_body, default=str)))
+            else:
+                logger.error('Expected Field "command_parameters" not found')
+                logger.error('command_body: {}'.format(json.dumps(command_body, default=str)))
             if stack_name is not None:
                 status, status_reason = get_stack_status(stack_name=stack_name)
                 return format_response(
@@ -108,6 +114,12 @@ def handler(event, context):
                         'stack_status_reason': status_reason,
                     }
                 )
+        else:
+            logger.error('Un-supported command: {}'.format(command_body['command']))
+            logger.error('command_body: {}'.format(json.dumps(command_body, default=str)))    
+    else:
+        logger.error('Expected field "command" not found in command body: {}'.format(json.dumps(command_body, default=str)))
+        logger.error('EVENT: {}'.format(json.dumps(event, default=str)))
 
     return format_response(status_code=599, body={'error': 'Command Instruction Failed'})
 
