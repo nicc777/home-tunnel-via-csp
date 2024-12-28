@@ -730,6 +730,18 @@ Outputs:
         - '.amazonaws.com/cumulus-tunnel/command'
     Export:
       Name: CumulusTunnelApiUrl
+  
+  StatusUrl:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'https://'
+        - !Ref ApiGateway
+        - '.execute-api.'
+        - !Sub ${AWS::Region}
+        - '.amazonaws.com/cumulus-tunnel/status'
+    Export:
+      Name: CumulusTunnelStatusUrl
 
   CumulusTunnelSsmPolicyArn:
     Value: !Ref CumulusTunnelSsmPolicy

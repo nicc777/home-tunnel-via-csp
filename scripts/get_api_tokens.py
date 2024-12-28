@@ -125,11 +125,11 @@ def get_exports(next_token:str=None)->list:
     return exports
 
 
-def get_api_gw_url(exports: list)->str:
+def get_api_gw_url(exports: list, key: str='CumulusTunnelApiUrl')->str:
     url = None
     for record in exports:
         for name, value in record.items():
-            if name == 'CumulusTunnelApiUrl':
+            if name == key:
                 url = '{}'.format(value)
     return url
 
@@ -160,18 +160,37 @@ def main():
     logger.info('HEADER x-cumulus-tunnel-credentials: {}'.format(base64_string))
     exports = get_exports()
     logger.debug('exports: {}'.format(json.dumps(exports)))
-    api_url = get_api_gw_url(exports=exports)
+    api_url = get_api_gw_url(exports=exports, key='CumulusTunnelApiUrl')
+    status_url = get_api_gw_url(exports=exports, key='CumulusTunnelStatusUrl')
     logger.info('URL: {}'.format(api_url))
-    test_payload = {
+    test_echo_payload = {
         'echo': 'test',
     }
-    test_url = 'curl -X POST -d \'{}\' --header "x-api-key: {}" --header "x-cumulus-tunnel-credentials: {}" --header "origin: agent" {}'.format(
-        json.dumps(test_payload, default=str),
+    test_status_payload = {
+        'command': 'get_stack_status', 
+        'command_parameters': {
+            'StackName': 'cumulus-tunnel-api-resources-stack'
+        }
+    }
+    test_url_1 = 'curl -X POST -d \'{}\' --header "x-api-key: {}" --header "x-cumulus-tunnel-credentials: {}" --header "origin: agent" {}'.format(
+        json.dumps(test_echo_payload, default=str),
         api_gateway_stage_token,
         base64_string,
         api_url
     )
-    logger.info('TEST URL: {}'.format(test_url))
+    test_url_2 = 'curl -X POST -d \'{}\' --header "x-api-key: {}" --header "x-cumulus-tunnel-credentials: {}" --header "origin: agent" {}'.format(
+        json.dumps(test_status_payload, default=str),
+        api_gateway_stage_token,
+        base64_string,
+        status_url
+    )
+    logger.info('TESTS /BEGIN/')
+    logger.info('-'*40)
+    logger.info('TEST URL 1: {}'.format(test_url_1))
+    logger.info('-'*40)
+    logger.info('TEST URL 2: {}'.format(test_url_2))
+    logger.info('-'*40)
+    logger.info('TESTS /END/')
 
     temp_dir = tempfile.gettempdir()
     config_file = '{}{}cumulus_tunnel_api.json'.format(temp_dir, os.sep)
