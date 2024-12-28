@@ -176,7 +176,7 @@ def handler(event, context):
 
             {
                 "RecordTtl": 1234567890,
-                "CommandOnTtl": "delete_relay_server",
+                "CommandOnTtl": "delete_relay_server_stack",
                 "RecordKey": "relay-server-stack",
                 "RecordValue": "{\"StackName\": \"test-stack\"}",
                 "RecordOrigin": "resource"

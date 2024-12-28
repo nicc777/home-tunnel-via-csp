@@ -67,7 +67,7 @@ class RelayServer:
     def is_relay_server_created(self)->bool:
         raise Exception('Must be implemented by the Cloud Provider specific implementation')
     
-    def create_relay_server(self, api_data:dict):
+    def create_relay_server(self, api_data:dict, timeout: int=1800):
         raise Exception('Must be implemented by the Cloud Provider specific implementation')
     
     def delete_relay_server_and_block_until_done(self, timeout: int=1800):
@@ -126,12 +126,25 @@ class AwsRelayServer(RelayServer):
         logger.info('  Stack "{}" has NOT been created'.format(self.configs['relay_server_stack_name']))
         return False
     
-    def create_relay_server(self, api_data:dict):
-        logger.info('Creating relay server with ID "{}"'.format(args.agent_identifier))
+    def create_relay_server(self, api_data:dict, timeout: int=1800):
+        logger.info('Creating relay server stack "{}"'.format(self.configs['relay_server_stack_name']))
+        data = {
+            'command': 'create_relay_server',
+            'command_parameters': {
+                'StackName': self.configs['relay_server_stack_name'],
+                'StackParameters': api_data,
+            },
+        }
         pass
 
     def delete_relay_server_and_block_until_done(self, timeout: int=1800):
-        logger.info('Deleting relay server with ID "{}"'.format(args.agent_identifier))
+        logger.info('Deleting relay server stack "{}"'.format(self.configs['relay_server_stack_name']))
+        data = {
+            'command': 'delete_relay_server_stack',
+            'command_parameters': {
+                'StackName': self.configs['relay_server_stack_name'],
+            },
+        }
         pass
 
 

@@ -800,6 +800,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         LAMBDA_FUNCTIONS = [
             'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_authorizer.py:CumulusTunnelApiAuthorizerS3KeyParam',
             'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_commander.py:CumulusTunnelCommanderS3KeyParam',
+            'cloud_iac/aws/lambda_functions/handler_cumulus_tunnel_cfn_stack_status.py:CumulusTunnelGetStackStatusS3KeyParam',
         ]
         additional_parameters = list()
         for function_data in LAMBDA_FUNCTIONS:

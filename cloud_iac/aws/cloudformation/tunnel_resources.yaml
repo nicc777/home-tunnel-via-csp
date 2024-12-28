@@ -25,6 +25,11 @@ Parameters:
     MinLength: 1
     Default: "handler_cumulus_tunnel_authorizer.zip"
 
+  CumulusTunnelGetStackStatusS3KeyParam:
+    Type: 'String'
+    MinLength: 1
+    Default: "handler_cumulus_tunnel_cfn_stack_status.zip"
+
   VpcId1Param:
     Type: 'String'
     MinLength: 1
@@ -125,20 +130,24 @@ Resources:
   ApiDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
-    - ApiProxyResourceGET
+    - ApiProxyResourceCommanderPOST
     Properties:
       RestApiId: !Ref ApiGateway
-  ApiProxyResourceROOT:
+
+  ###
+  ### Commander Path and Handler
+  ###
+  ApiProxyResourceCommander:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGateway
       ParentId: !GetAtt ApiGateway.RootResourceId
       PathPart: command
-  ApiProxyResourceGET:
+  ApiProxyResourceCommanderPOST:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGateway
-      ResourceId: !Ref ApiProxyResourceROOT
+      ResourceId: !Ref ApiProxyResourceCommander
       HttpMethod: POST  
       ApiKeyRequired: true    
       AuthorizationType: CUSTOM
@@ -146,12 +155,12 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CumulusTunnelCommander.Arn}/invocations
-  ApiProxyResourceOPTIONS:
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CumulusTunnelCommanderFunction.Arn}/invocations
+  ApiProxyResourceOptionsCommander:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGateway
-      ResourceId: !Ref ApiProxyResourceROOT
+      ResourceId: !Ref ApiProxyResourceCommander
       HttpMethod: OPTIONS
       AuthorizationType: NONE
       Integration:
@@ -175,6 +184,59 @@ Resources:
             method.response.header.Access-Control-Allow-Headers: false
             method.response.header.Access-Control-Allow-Methods: false
             method.response.header.Access-Control-Allow-Origin: false
+  
+  ###
+  ### Stack Status Path and Handler
+  ###
+  ApiProxyResourceStackStatus:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: status
+  ApiProxyResourceStackStatusPOST:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiProxyResourceStackStatus
+      HttpMethod: POST  
+      ApiKeyRequired: true    
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CumulusTunnelStackStatusFunction.Arn}/invocations
+  ApiProxyResourceOptionsStackStatus:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiProxyResourceStackStatus
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        IntegrationResponses:
+        - StatusCode: '200'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,x-cumulus-tunnel-credentials'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: '200'
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+  # Authorizer
   ApiAuthorizer:
     Type: AWS::ApiGateway::Authorizer
     Properties:
@@ -186,18 +248,46 @@ Resources:
       IdentitySource: 'method.request.header.x-cumulus-tunnel-credentials, method.request.header.origin'
 
   # Lambda Configuration
-  LambdaRetrieverLogGroup:
+  CumulusTunnelStackStatusLogGroup:
     Type: AWS::Logs::LogGroup
-    DependsOn: CumulusTunnelCommander
+    DependsOn: CumulusTunnelStackStatusFunction
     Properties:
       LogGroupName:
         Fn::Join:
         - ''
         - - "/aws/lambda/"
-          - Ref: CumulusTunnelCommander
+          - Ref: CumulusTunnelStackStatusFunction
       RetentionInDays: 7
 
-  CumulusTunnelCommander:
+  CumulusTunnelStackStatusFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Code:
+        S3Bucket: !Ref ArtifactBucketNameParam
+        S3Key: !Ref CumulusTunnelGetStackStatusS3KeyParam
+      Role: !GetAtt ApiGwLambdaRole.Arn
+      Handler: handler_cumulus_tunnel_cfn_stack_status.handler
+      FunctionName: cumulus-tunnel-get-stack-status
+      Description: Retrieve the status of a cloudformation stack
+      MemorySize: 128
+      Timeout: 3
+      Environment:
+        Variables:
+          DEBUG: !Ref DebugParam
+
+  CumulusTunnelCommanderLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: CumulusTunnelCommanderFunction
+    Properties:
+      LogGroupName:
+        Fn::Join:
+        - ''
+        - - "/aws/lambda/"
+          - Ref: CumulusTunnelCommanderFunction
+      RetentionInDays: 7
+
+  CumulusTunnelCommanderFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.12
@@ -286,6 +376,33 @@ Resources:
             Action:
             - dynamodb:Scan
             Resource: !GetAtt CumulusTunnelDynamodbTable.Arn
+      - PolicyName: !Sub ${AWS::StackName}-cloudformation
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - "cloudformation:CancelUpdateStack"
+            - "cloudformation:DescribeStackResources"
+            - "cloudformation:UpdateStackSet"
+            - "cloudformation:CreateChangeSet"
+            - "cloudformation:DeleteStackSet"
+            - "cloudformation:DeleteChangeSet"
+            - "cloudformation:DescribeStacks"
+            - "cloudformation:DescribeStackEvents"
+            - "cloudformation:DescribeStackSet"
+            - "cloudformation:CreateStack"
+            - "cloudformation:GetTemplate"
+            - "cloudformation:DeleteStack"
+            - "cloudformation:DescribeChangeSet"
+            - "cloudformation:ExecuteChangeSet"
+            - "cloudformation:ListChangeSets"
+            - "cloudformation:ListStackResources"
+            Resource: 
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/*/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:type/resource/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stackset-target/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stackset/*:*"
 
   LambdaAuthorizerIAMRole: 
     Type: AWS::IAM::Role
@@ -325,7 +442,15 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt CumulusTunnelCommander.Arn
+      FunctionName: !GetAtt CumulusTunnelCommanderFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/*
+
+  ApiGatewayInvokeStackStatus:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CumulusTunnelStackStatusFunction.Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/*
 
