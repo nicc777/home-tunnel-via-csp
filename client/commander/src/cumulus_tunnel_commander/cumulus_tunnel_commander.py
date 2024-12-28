@@ -170,6 +170,9 @@ def agent_main():
             logger.warning('Option --delete-relay-server provided, but relay server resources does not appear to exist.')
 
     do_loop = True
+    if args.do_not_create_relay_server is True:
+        do_loop = False
+        logger.warning('The Relay Server Resources will NOT be deployed, and therefore the main loop will not start.')
     while do_loop:
         logger.info('Main loop running')
 
@@ -179,7 +182,7 @@ def agent_main():
             )
         
         if args.run_once is True:
-            logger.info('Main loop DONE due to run_once flag been true')
+            logger.info('Main loop DONE due to --run-once flag been true')
             do_loop = False
         else:
             logger.info('Main loop DONE - sleeping {} seconds'.format(args.update_interval_seconds))

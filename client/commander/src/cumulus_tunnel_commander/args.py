@@ -61,6 +61,14 @@ parser.add_argument(
     dest='delete_relay_server'
 )
 parser.add_argument(
+    '--no-create-relay-server',
+    help='Will not create the relay server resources if it does not exist. The --delete-relay-server parameter, if set, will be processed first. If you only want to delete the existing resources without re-creating it, set this flag.',
+    action='store_true',
+    default=False,
+    required=False,
+    dest='do_not_create_relay_server'
+)
+parser.add_argument(
     '--update-interval-seconds',
     help='How often the NAT address will be refreshed',
     action='store',
