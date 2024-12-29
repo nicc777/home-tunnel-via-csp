@@ -398,6 +398,7 @@ Resources:
             - "cloudformation:ExecuteChangeSet"
             - "cloudformation:ListChangeSets"
             - "cloudformation:ListStackResources"
+            - "cloudformation:ListStacks"
             Resource: 
             - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/*/*"
             - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:type/resource/*"

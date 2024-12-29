@@ -185,6 +185,74 @@ Resources:
             - "sqs:SendMessage"
             - "sqs:GetQueueUrl"
             Resource: "*"
+          # CloudFormation
+          - Effect: Allow
+            Action:
+            - "cloudformation:CancelUpdateStack"
+            - "cloudformation:DescribeStackResources"
+            - "cloudformation:UpdateStackSet"
+            - "cloudformation:CreateChangeSet"
+            - "cloudformation:DeleteStackSet"
+            - "cloudformation:DeleteChangeSet"
+            - "cloudformation:DescribeStacks"
+            - "cloudformation:DescribeStackEvents"
+            - "cloudformation:DescribeStackSet"
+            - "cloudformation:CreateStack"
+            - "cloudformation:GetTemplate"
+            - "cloudformation:DeleteStack"
+            - "cloudformation:DescribeChangeSet"
+            - "cloudformation:ExecuteChangeSet"
+            - "cloudformation:ListChangeSets"
+            - "cloudformation:ListStackResources"
+            - "cloudformation:ListStacks"
+            Resource: 
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/*/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:type/resource/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stackset-target/*"
+            - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stackset/*:*"
+          # S3
+          - Effect: 'Allow'
+            Action: 
+            - 's3:HeadObject'
+            - 's3:GetObject'
+            - 's3:ListObjectsV2'
+            - 's3:CopyObject'
+            Resource: 
+              Fn::Sub: 
+              - 'arn:aws:s3:::${Bucket}/*'
+              - Bucket: !Ref ArtifactBucketNameParam
+          # EC2 full access
+          - Action: ec2:*
+            Effect: Allow
+            Resource: "*"
+          - Effect: Allow
+            Action: elasticloadbalancing:*
+            Resource: "*"
+          - Effect: Allow
+            Action: cloudwatch:*
+            Resource: "*"
+          - Effect: Allow
+            Action: autoscaling:*
+            Resource: "*"
+          - Effect: Allow
+            Action: iam:CreateServiceLinkedRole
+            Resource: "*"
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                - autoscaling.amazonaws.com
+                - ec2scheduled.amazonaws.com
+                - elasticloadbalancing.amazonaws.com
+                - spot.amazonaws.com
+                - spotfleet.amazonaws.com
+          # Route 53
+          - Effect: Allow
+            Action:
+            - route53:GetHostedZone
+            - route53:ChangeResourceRecordSets
+            - route53:GetHostedZoneLimit
+            - route53:ListHostedZones
+            Resource: "*"
 
 
   ########################################

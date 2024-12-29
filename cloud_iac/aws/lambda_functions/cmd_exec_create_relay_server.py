@@ -62,6 +62,48 @@ def extract_body_as_dict_from_event_record(record)->dict:
     return dict()
 
 
+def prepare_cloudformation_parameters(command_data: dict)->list:
+    parameters = list()
+    for record in command_data['StackParameters']:
+        parameters.append(
+            {
+                'ParameterKey': '{}'.format(record['parameter_name']),
+                'ParameterValue': '{}'.format(record['parameter_value']),
+            }
+        )
+    return parameters
+
+
+def create_cloudformation_new_stack(
+    template_key: str,
+    stack_parameters: list,
+    stack_name: str,
+    aws_region: str,
+    s3_bucket: str
+)->str:
+    template_url = 'https://{}.s3.{}.amazonaws.com/{}'.format(
+        s3_bucket,
+        aws_region,
+        template_key
+    )
+    logger.info('Attempting to create a new CloudFormation Stack from template {}'.format(template_url))
+    client = boto3.client('cloudformation')
+    response = client.create_stack(
+        StackName=stack_name,
+        TemplateURL=template_url,
+        Parameters=stack_parameters,
+        TimeoutInMinutes=60,
+        Capabilities=[
+            'CAPABILITY_IAM',
+            'CAPABILITY_NAMED_IAM'
+        ],
+        OnFailure='DO_NOTHING'
+    )
+    logger.debug('response: {}'.format(json.dumps(response, default=str)))
+    return response['StackId']
+    
+
+
 def handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     if 'Records' in event:
@@ -91,6 +133,14 @@ def handler(event, context):
             if command_data['StackName'] not in current_deployed_stack_names:
                 # NEW stack
                 logger.info('Creating NEW stack named "{}"'.format(command_data['StackName']))
+                stack_id = create_cloudformation_new_stack(
+                    template_key='relay_server.yaml',
+                    stack_parameters=prepare_cloudformation_parameters(command_data=command_data),
+                    stack_name=command_data['StackName'],
+                    aws_region=context.invoked_function_arn.split(':')[3],
+                    s3_bucket=os.getenv('ARTIFACT_BUCKET')
+                )
+                logger.info('StackId: {}'.format(stack_id))
             else:
                 # CHANGE SET
                 logger.info('Creating CHANGE SET for stack named "{}"'.format(command_data['StackName']))
