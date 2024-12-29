@@ -294,6 +294,7 @@ Resources:
             - iam:DeleteGroupPolicy
             - iam:GetRolePolicy
             - iam:DeletePolicyVersion
+            - iam:PassRole
             Resource: "*"
 
 
