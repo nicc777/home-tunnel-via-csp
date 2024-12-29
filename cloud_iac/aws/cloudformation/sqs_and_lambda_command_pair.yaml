@@ -252,6 +252,7 @@ Resources:
             - route53:ChangeResourceRecordSets
             - route53:GetHostedZoneLimit
             - route53:ListHostedZones
+            - route53:GetChange
             Resource: "*"
           # IAM
           - Effect: Allow
