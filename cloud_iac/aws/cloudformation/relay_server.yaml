@@ -176,18 +176,17 @@ Resources:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
+        Version: '2012-10-17'
         Statement:
-        - Sid: !Sub '${AWS::StackName}-sid-1'
-          Effect: 'Allow'
+        - Effect: Allow
           Principal:
             Service:
-            - 'ec2.amazonaws.com'
-          Action:
-          - 'sts:AssumeRole'
+            - ec2.amazonaws.com
+          Action: 'sts:AssumeRole'
       ManagedPolicyArns:
       - !ImportValue CumulusTunnelSsmPolicyArn
       Policies:
-      - PolicyName: !Sub '${AWS::StackName}-policy-1'
+      - PolicyName: !Sub '${ManagementDomainRecordParam}-policy-1'
         PolicyDocument:
           Version: '2012-10-17'
           Statement: 
@@ -196,7 +195,7 @@ Resources:
             - 'secretsmanager:DescribeSecret'
             Effect: 'Allow'
             Resource: !ImportValue  CumulusTunnelAuthTokenSecretArn
-      - PolicyName: !Sub '${AWS::StackName}-policy-2'
+      - PolicyName: !Sub '${ManagementDomainRecordParam}-policy-2'
         PolicyDocument:
           Version: '2012-10-17'
           Statement: 
@@ -210,7 +209,7 @@ Resources:
               Fn::Sub: 
               - 'arn:aws:s3:::${Bucket}/*'
               - Bucket: !Ref ArtifactBucketNameParam
-      - PolicyName: !Sub '${AWS::StackName}-policy-3'
+      - PolicyName: !Sub '${ManagementDomainRecordParam}-policy-3'
         PolicyDocument:
           Version: '2012-10-17'
           Statement: 
@@ -219,7 +218,7 @@ Resources:
             Effect: 'Allow'
             Resource: 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/cumulus-tunnel'
       Path: /
-      RoleName: !Sub '${AWS::StackName}-RelayServerRole1'
+      RoleName: !Sub '${ManagementDomainRecordParam}-RelayServerRole1'
 
   RelayServerProfile: 
     Type: 'AWS::IAM::InstanceProfile'
