@@ -1,10 +1,8 @@
 import os
 import json
-import json
 import logging
 import traceback
 import sys
-import socket
 from email.message import Message
 import boto3
 from boto3.dynamodb.conditions import Attr

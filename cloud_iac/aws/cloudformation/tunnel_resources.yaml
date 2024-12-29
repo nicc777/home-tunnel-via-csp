@@ -616,32 +616,9 @@ Resources:
       Environment:
         Variables:
           DEBUG: !Ref DebugParam
-      VpcConfig: 
-        SubnetIds: 
-        - !Ref SubnetId1Param
-        - !Ref SubnetId2Param
-        - !Ref SubnetId3Param
-        SecurityGroupIds:
-        - !GetAtt DynamoDbTtlExpirationHandlerSG.GroupId
       Code:
         S3Bucket: !Ref ArtifactBucketNameParam
         S3Key: dynamodb_ttl_expire_event_handler.zip
-
-  DynamoDbTtlExpirationHandlerSG: # Security group for Lambda
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Enable internet access for the Lambda function 
-      VpcId: !Ref VpcId1Param
-      SecurityGroupIngress: # Allow inbound from VPC (optional, if needed)
-      - IpProtocol: -1 # All protocols
-        FromPort: 0
-        ToPort: 65535
-        CidrIp: !Ref VpcCidrParam
-      SecurityGroupEgress: # Allow outbound to internet
-      - IpProtocol: -1 # All protocols
-        FromPort: 0
-        ToPort: 65535
-        CidrIp: 0.0.0.0/0
 
   LambdaEventSourceMapping:
     Type: AWS::Lambda::EventSourceMapping
