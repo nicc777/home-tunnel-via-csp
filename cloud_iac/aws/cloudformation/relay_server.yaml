@@ -375,7 +375,7 @@ Resources:
   RelayServerAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
-      Name: !Sub '${AWS::StackName}-alb'
+      Name: !Sub '${ManagementDomainRecordParam}-alb'
       Type: 'application'
       Scheme: 'internal'
       IpAddressType: 'ipv4'
