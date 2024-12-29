@@ -336,7 +336,7 @@ Resources:
   RelayServerHttpTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
-      Name: !Sub '${AWS::StackName}-http-tg'
+      Name: !Sub '${ManagementDomainRecordParam}-http-tg'
       TargetType: 'instance'
       IpAddressType: 'ipv4'
       Protocol: 'HTTP'
@@ -356,7 +356,7 @@ Resources:
   RelayServerAdminTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
-      Name: !Sub '${AWS::StackName}-admin-tg'
+      Name: !Sub '${ManagementDomainRecordParam}-admin-tg'
       TargetType: 'instance'
       IpAddressType: 'ipv4'
       Protocol: 'HTTP'

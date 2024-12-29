@@ -253,6 +253,48 @@ Resources:
             - route53:GetHostedZoneLimit
             - route53:ListHostedZones
             Resource: "*"
+          # IAM
+          - Effect: Allow
+            Action:
+            - iam:CreateInstanceProfile
+            - iam:GetPolicyVersion
+            - iam:ListRoleTags
+            - iam:DeleteGroup
+            - iam:UpdateGroup
+            - iam:DeletePolicy
+            - iam:CreateRole
+            - iam:AttachRolePolicy
+            - iam:PutRolePolicy
+            - iam:GetGroup
+            - iam:AddRoleToInstanceProfile
+            - iam:DetachRolePolicy
+            - iam:DeleteRolePolicy
+            - iam:DetachGroupPolicy
+            - iam:ListAttachedGroupPolicies
+            - iam:ListPolicyTags
+            - iam:ListRolePolicies
+            - iam:CreatePolicyVersion
+            - iam:PutGroupPolicy
+            - iam:ListPolicies
+            - iam:DeleteInstanceProfile
+            - iam:GetRole
+            - iam:CreateGroup
+            - iam:GetInstanceProfile
+            - iam:GetPolicy
+            - iam:ListRoles
+            - iam:UpdateRoleDescription
+            - iam:ListUserPolicies
+            - iam:ListInstanceProfiles
+            - iam:CreatePolicy
+            - iam:ListPolicyVersions
+            - iam:ListUsers
+            - iam:UpdateRole
+            - iam:ListGroups
+            - iam:GetGroupPolicy
+            - iam:DeleteGroupPolicy
+            - iam:GetRolePolicy
+            - iam:DeletePolicyVersion
+            Resource: "*"
 
 
   ########################################
