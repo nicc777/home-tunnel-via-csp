@@ -216,7 +216,7 @@ Resources:
           - Action: 
             - 'dynamodb:PutItem'
             Effect: 'Allow'
-            Resource: 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/cumulus-tunnel'
+            Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/cumulus-tunnel'
       Path: /
       RoleName: !Sub '${ManagementDomainRecordParam}-RelayServerRole1'
 
