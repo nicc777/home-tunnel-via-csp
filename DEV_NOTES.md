@@ -111,6 +111,12 @@ rm -vf $HOME/.cumulus_tunnel_state.sqlite &&                    \
   python3 -m cumulus_tunnel_commander.cumulus_tunnel_commander  \
   -v --run-once --identifier="test-relay"                       \
   --cloud-profile-name=$AWS_PROFILE && cd $S
+
+# Get the latest password for SSH:
+PAGER="" aws secretsmanager get-secret-value --region $AWS_REGION --profile $AWS_PROFILE --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" --query SecretString --output text | jq -r ".password"
+
+# SSH to the newly launched instance to test:
+ssh -p 2022 rtu@....
 ```
 
 # API Command Structures
