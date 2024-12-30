@@ -507,6 +507,30 @@
         <mxCell id="rXJJeZHOd4keSynBRXM2-21" value="Resource Tunnel" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
           <mxGeometry x="340" y="530" width="60" height="30" as="geometry" />
         </mxCell>
+        <mxCell id="rXJJeZHOd4keSynBRXM2-22" value="Resource Port" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="550" y="640" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="rXJJeZHOd4keSynBRXM2-23" value="Client&lt;div&gt;Port&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="550" y="720" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="rXJJeZHOd4keSynBRXM2-24" value="" style="endArrow=none;dashed=1;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0;exitDx=0;exitDy=0;strokeColor=#009900;jumpSize=6;strokeWidth=2;" edge="1" parent="1" source="rXJJeZHOd4keSynBRXM2-3" target="rXJJeZHOd4keSynBRXM2-23">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="260" y="660" as="sourcePoint" />
+            <mxPoint x="310" y="610" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="340" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rXJJeZHOd4keSynBRXM2-25" value="" style="endArrow=none;dashed=1;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=1;exitDx=0;exitDy=0;strokeColor=#0000FF;jumpSize=6;strokeWidth=2;" edge="1" parent="1" source="rXJJeZHOd4keSynBRXM2-2" target="rXJJeZHOd4keSynBRXM2-22">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="324" y="776" as="sourcePoint" />
+            <mxPoint x="560" y="750" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="330" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
