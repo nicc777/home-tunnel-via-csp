@@ -508,10 +508,10 @@
           <mxGeometry x="340" y="530" width="60" height="30" as="geometry" />
         </mxCell>
         <mxCell id="rXJJeZHOd4keSynBRXM2-22" value="Resource Port" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="550" y="640" width="60" height="40" as="geometry" />
+          <mxGeometry x="560" y="640" width="80" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="rXJJeZHOd4keSynBRXM2-23" value="Client&lt;div&gt;Port&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="550" y="720" width="60" height="40" as="geometry" />
+        <mxCell id="rXJJeZHOd4keSynBRXM2-23" value="Remote Client&amp;nbsp;&lt;span style=&quot;background-color: initial;&quot;&gt;Port&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="720" width="80" height="40" as="geometry" />
         </mxCell>
         <mxCell id="rXJJeZHOd4keSynBRXM2-24" value="" style="endArrow=none;dashed=1;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0;exitDx=0;exitDy=0;strokeColor=#009900;jumpSize=6;strokeWidth=2;" edge="1" parent="1" source="rXJJeZHOd4keSynBRXM2-3" target="rXJJeZHOd4keSynBRXM2-23">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
