@@ -1,0 +1,9 @@
+Include /etc/ssh/sshd_config.d/*.conf
+Port 2022
+KbdInteractiveAuthentication yes
+UsePAM yes
+X11Forwarding no
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem       sftp    /usr/lib/openssh/sftp-server
+

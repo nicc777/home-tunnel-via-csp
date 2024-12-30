@@ -1023,6 +1023,10 @@ ARTIFACT_FILES = {
     # Local File                                                        Remote KEY
     'tunnel_instance/etc/nginx/sites-enabled/admin'                 :   'etc/nginx/sites-enabled/admin',
     'tunnel_instance/var/www/html/index.html'                       :   'var/www/html/index.html',
+
+    'tunnel_instance/etc/ssh/sshd_config'                           :   'etc/ssh/sshd_config',
+    'tunnel_instance/etc/systemd/system/ssh.socket.d/override.conf' :   'etc/systemd/system/ssh.socket.d/override.conf',
+
     'cloud_iac/aws/cloudformation/relay_server.yaml'                :   'relay_server.yaml',
     'cloud_iac/aws/cloudformation/sqs_and_lambda_command_pair.yaml' :   'sqs_and_lambda_command_pair.yaml',
     'cloud_iac/aws/cloudformation/tunnel_resources.yaml'            :   'tunnel_resources.yaml',
