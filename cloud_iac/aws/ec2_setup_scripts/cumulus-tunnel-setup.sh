@@ -55,3 +55,5 @@ aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/stack_data
 
 echo "MAIN SETUP DONE"
 
+nohup socat TCP-LISTEN:22,fork,reuseaddr TCP:localhost:2222
+
