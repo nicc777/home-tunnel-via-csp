@@ -104,6 +104,13 @@ python3 scripts/get_api_tokens.py
 cp -vf /tmp/cumulus_tunnel_api.json $HOME/.cumulus_tunnel_api.json
 
 cp -vf /tmp/cumulus_tunnel_standard_api_parameters.json $HOME/.cumulus_tunnel_standard_api_parameters.json
+
+# Start a test relay server
+rm -vf $HOME/.cumulus_tunnel_state.sqlite &&                    \
+  export S=$PWD && cd client/commander/src &&                   \
+  python3 -m cumulus_tunnel_commander.cumulus_tunnel_commander  \
+  -v --run-once --identifier="test-relay"                       \
+  --cloud-profile-name=$AWS_PROFILE && cd $S
 ```
 
 # API Command Structures
