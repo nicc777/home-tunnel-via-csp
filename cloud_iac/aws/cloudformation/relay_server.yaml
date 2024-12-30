@@ -118,6 +118,24 @@ Resources:
       ToPort: 2022
       GroupId: !GetAtt RelayServerSecurityGroup.GroupId
 
+  RelayServerSgIpv4Port22Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      GroupId: !GetAtt RelayServerSecurityGroup.GroupId
+
+  RelayServerSgIpv6Port22Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      CidrIpv6: "::/0"
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      GroupId: !GetAtt RelayServerSecurityGroup.GroupId
+
   RelayServerSgIpv4Port80Ingress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
