@@ -168,6 +168,17 @@ def is_command_api_type_record(record: dict)->bool:
     return True
 
 
+def process_command_and_submit_to_sqs(sqs_url: str, command_body: dict):
+    logger.debug('sqs_url: {}'.format(sqs_url))
+    client = boto3.client('sqs')
+    response = client.send_message(
+        QueueUrl=sqs_url,
+        MessageBody='{}'.format(json.dumps(command_body, default=str))
+    )
+    logger.debug('response: {}'.format(json.dumps(response, default=str)))
+    logger.info('Message ID: {}'.format(response['MessageId']))
+
+
 def handler(event, context):
     """
         Expected data that this function can react on (example):
@@ -205,12 +216,14 @@ def handler(event, context):
                 try:
                     sqs_queue = command_config_cache.get_sqs_url_for_command(command=command)
                     logger.info('Passing data for command "{}" on to SQS Queue "{}"'.format(command, sqs_queue))
-                    origin = data.pop('RecordOrigin')
                     origin_data = {
                         'command': command,
                         'command_parameters': json.loads(data['RecordValue']),
                     }
-                    # TODO Post to SQS as if it is from the API Gateway.... Mimic the Proxy Request...
+                    process_command_and_submit_to_sqs(
+                        sqs_url=sqs_queue,
+                        command_body=origin_data
+                    )
                 except Exception as e:
                     logger.error('Error: {}'.format(e))
                     logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
