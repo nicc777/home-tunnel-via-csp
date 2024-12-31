@@ -572,7 +572,10 @@ Resources:
             - dynamodb:GetRecords
             - dynamodb:GetShardIterator
             - dynamodb:ListStreams
-            Resource: !GetAtt CumulusTunnelDynamodbTable.StreamArn
+            - dynamodb:Scan
+            Resource: 
+            - !GetAtt CumulusTunnelDynamodbTable.StreamArn
+            - !GetAtt CumulusTunnelDynamodbTable.Arn
       - PolicyName: VPCAccessPolicy 
         PolicyDocument:
           Version: '2012-10-17'

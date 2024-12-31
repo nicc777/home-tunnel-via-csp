@@ -202,13 +202,17 @@ def handler(event, context):
                 logger.warning('No data to forward to command API was found')
             else:
                 command = data['CommandOnTtl']
-                sqs_queue = command_config_cache.get_sqs_url_for_command(command=command)
-                logger.info('Passing data for command "{}" on to SQS Queue "{}"'.format(command, sqs_queue))
-                origin = data.pop('RecordOrigin')
-                origin_data = {
-                    'command': command,
-                    'command_parameters': json.loads(data['RecordValue']),
-                }
-                # TODO Post to SQS as if it is from the API Gateway.... Mimic the Proxy Request...
+                try:
+                    sqs_queue = command_config_cache.get_sqs_url_for_command(command=command)
+                    logger.info('Passing data for command "{}" on to SQS Queue "{}"'.format(command, sqs_queue))
+                    origin = data.pop('RecordOrigin')
+                    origin_data = {
+                        'command': command,
+                        'command_parameters': json.loads(data['RecordValue']),
+                    }
+                    # TODO Post to SQS as if it is from the API Gateway.... Mimic the Proxy Request...
+                except Exception as e:
+                    logger.error('Error: {}'.format(e))
+                    logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
                 
     return 'ok'
