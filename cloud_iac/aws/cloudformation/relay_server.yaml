@@ -362,7 +362,7 @@ Resources:
       - !Ref SubnetId3Param
       Tags:
       - Key: 'Name'
-        Value: 'cumulus-tunnel'
+        Value: !Ref ManagementDomainRecordParam
         PropagateAtLaunch: true
       TargetGroupARNs:
       - !Ref RelayServerHttpTargetGroup

@@ -167,6 +167,25 @@ class AwsRelayServer(RelayServer):
             if match_found is True:
                 final_parameters.pop(match_index)
             final_parameters.append(override_record)
+        
+        match_found = False
+        match_index = 9999
+        current_index = 0
+        for record in final_parameters:
+            if record['parameter_name'] == 'ManagementDomainRecordParam':
+                match_found = True
+                match_index = current_index
+            current_index += 1
+        if match_found is True:
+            final_parameters.pop(match_index)
+        final_parameters.append(
+            {
+                'parameter_name': 'ManagementDomainRecordParam',
+                'parameter_type': 'str',
+                'parameter_value': '{}-admin'.format(args.agent_identifier)
+            }
+        )
+
         return final_parameters
 
     def is_relay_server_created(self)->bool:

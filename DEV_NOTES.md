@@ -105,18 +105,30 @@ cp -vf /tmp/cumulus_tunnel_api.json $HOME/.cumulus_tunnel_api.json
 
 cp -vf /tmp/cumulus_tunnel_standard_api_parameters.json $HOME/.cumulus_tunnel_standard_api_parameters.json
 
+# Name the relay server
+export RELAY_SERVER_NAME="test-relay"
+
 # Start a test relay server
-rm -vf $HOME/.cumulus_tunnel_state.sqlite &&                    \
-  export S=$PWD && cd client/commander/src &&                   \
-  python3 -m cumulus_tunnel_commander.cumulus_tunnel_commander  \
-  -v --run-once --identifier="test-relay"                       \
-  --cloud-profile-name=$AWS_PROFILE && cd $S
+rm -vf $HOME/.cumulus_tunnel_state.sqlite &&                  \
+export S=$PWD && cd client/commander/src &&                   \
+python3 -m cumulus_tunnel_commander.cumulus_tunnel_commander  \
+-v --run-once --identifier=$RELAY_SERVER_NAME                 \
+--cloud-profile-name=$AWS_PROFILE && cd $S
 
 # Get the latest password for SSH:
-PAGER="" aws secretsmanager get-secret-value --region $AWS_REGION --profile $AWS_PROFILE --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" --query SecretString --output text | jq -r ".password"
+PAGER="" aws secretsmanager get-secret-value                          \
+--region $AWS_REGION --profile $AWS_PROFILE                           \
+--secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" \
+--query SecretString --output text | jq -r ".password"
+
+# Het the instance ID:
+export INSTANCE_ID=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" --query 'Reservations[*].Instances[*].InstanceId' --output text --region $AWS_REGION --profile $AWS_PROFILE`
+
+# Get the Instance IP Address
+export INSTANCE_IP_ADDR=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" --output json --region $AWS_REGION --profile $AWS_PROFILE | jq -r '.Reservations[].Instances[].PublicIpAddress'`
 
 # SSH to the newly launched instance to test:
-ssh -p 2022 rtu@....
+ssh -p 2022 rtu@$INSTANCE_IP_ADDR
 ```
 
 # API Command Structures
