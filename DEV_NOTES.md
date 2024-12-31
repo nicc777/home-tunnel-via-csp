@@ -127,8 +127,19 @@ export INSTANCE_ID=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name
 # Get the Instance IP Address
 export INSTANCE_IP_ADDR=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" --output json --region $AWS_REGION --profile $AWS_PROFILE | jq -r '.Reservations[].Instances[].PublicIpAddress'`
 
+# Setup a simple test local web server
+mkdir /tmp/simple-static
+echo "<html><head><title>Simple Test</head></title><body><h3>It Works</h3></body></html>" > /tmp/simple-static/index.html
+podman run --name static-web-test -v /tmp/simple-static:/usr/share/nginx/html:ro -d -p 8999:80 docker.io/nginx:latest
+curl http://localhost:8999
+
 # SSH to the newly launched instance to test:
-ssh -p 2022 rtu@$INSTANCE_IP_ADDR
+ssh -p 2022 -R 0.0.0.0:8999:8999  rtu@$INSTANCE_IP_ADDR
+
+# NOTE - for now I still have to add manually my IP address to the SG....
+
+# In another terminal, test:
+curl http://$INSTANCE_IP_ADDR:8999
 ```
 
 # API Command Structures
