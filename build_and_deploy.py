@@ -732,6 +732,7 @@ class AwsCloudServiceProvider(CloudServiceProviderBase):
         LAMBDA_FUNCTIONS = [
             'cloud_iac/aws/lambda_functions/cmd_exec_create_relay_server.py',
             'cloud_iac/aws/lambda_functions/cmd_exec_delete_relay_server_stack.py',
+            'cloud_iac/aws/lambda_functions/cmd_exec_reconcile_agent_rules.py',
         ]
         for source_file in LAMBDA_FUNCTIONS:
             file_name, package_name = self._package_lambda_function(source_file=source_file)
