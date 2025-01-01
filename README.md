@@ -11,13 +11,14 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 # Project Status
 
-| Date       | Status           | Notes                                                                    |
-|------------|:----------------:|--------------------------------------------------------------------------|
-| 2024-12-24 | Major Refactor   | After some practical tests, first major refactor done. Still lots to do. |
-|            |                  | Updated integration diagram                                              |
-|            |                  | Reorganized features and progress                                        |
-| 2024-12-17 | Work in Progress | Most of the AWS IaC is done. Busy with the tunnel service                |
-| 2024-12-07 | Planning         | Initial planning and setup of the project                                |
+| Date       | Status           | Notes                                                                                                                                                                                                              |
+|------------|:----------------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2025-01-01 | Focus on Agent   | Provisioning the relay server works and with manually added Security Group rules, a relay can be set-up end-to-end. Now need to automate the process of client registration and dynamic Security Group management. |
+| 2024-12-24 | Major Refactor   | After some practical tests, first major refactor done. Still lots to do.                                                                                                                                           |
+|            |                  | Updated integration diagram                                                                                                                                                                                        |
+|            |                  | Reorganized features and progress                                                                                                                                                                                  |
+| 2024-12-17 | Work in Progress | Most of the AWS IaC is done. Busy with the tunnel service                                                                                                                                                          |
+| 2024-12-07 | Planning         | Initial planning and setup of the project                                                                                                                                                                          |
 
 # Planned features
 
