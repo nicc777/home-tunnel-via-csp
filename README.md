@@ -21,10 +21,12 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 # Planned features
 
-* [ ] Relay Server Agent
-* [ ] Relay Server Admin UI (Web)
-* [ ] Client Agent
-* [ ] Client Local Admin UI (Web)
+* [X] Relay Server Agent
+  * [ ] Python Package
+  * [ ] Relay Server Admin UI (Web)
+* [X] Client Agent
+  * [ ] Python Package
+  * [ ] Client Local Admin UI (Web)
 * [X] Deployment Script
 * [ ] API Commands
   * [X] Register Relay Server
