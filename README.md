@@ -27,9 +27,9 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 * [ ] Client Local Admin UI (Web)
 * [X] Deployment Script
 * [ ] API Commands
-  * [ ] Register Relay Server
-  * [ ] Deregister Relay Server
-  * [ ] Get Relay Server Config and STatus
+  * [X] Register Relay Server
+  * [X] Deregister Relay Server
+  * [X] Get Relay Server Config and Status
   * [ ] Register Agent
   * [ ] Deregister Agent
   * [ ] Get overall status
