@@ -28,8 +28,8 @@ echo dummy | adduser --shell /usr/bin/bash -comment "Relay Tunnel User" --home /
 echo "rtu:${PW}" | chpasswd
 
 
+# Save the STACK_NAME value for this relay server
 export EXPIRE_TTL=`date -u -d "${SERVER_TTL} hours" +%s`
-
 cat <<EOF > /tmp/stack_data_for_db
 {
     "RecordKey": {
@@ -49,10 +49,67 @@ cat <<EOF > /tmp/stack_data_for_db
     }
 }
 EOF
-
-# Save the STACK_NAME value for this relay server
 aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/stack_data_for_db
 
+
+# Persist data about this relay server
+END_OF_TIME=32503680000 # At this point, who cares?
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
+SECURITY_GROUP_IDS=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/security-groups)
+
+echo "Instance ID: $INSTANCE_ID"
+echo "Security Group IDs: $SECURITY_GROUP_IDS"
+
+cat <<EOF > /tmp/relay_instance_id
+{
+    "RecordKey": {
+        "S": "relay-server:instance-id:${MANAGEMENT_DOMAIN}"
+    },
+    "RecordTtl": {
+        "N": "${END_OF_TIME}"
+    },
+    "RecordValue": {
+        "S": "{\"parameter_name\": \"instance_id\", \"parameter_type\": \"str\", \"parameter_value\": \"${INSTANCE_ID}\"}"
+    },
+    "CommandOnTtl": {
+        "S": "IGNORE"
+    },
+    "RecordOrigin": {
+        "S": "relay"
+    }
+}
+EOF
+aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/relay_instance_id
+
+
+echo "Looping through security groups:"
+IFS=$'\n' read -r -d '' array <<< "$SECURITY_GROUP_IDS"
+for group in "${array[@]}"; do
+    echo "Security Group ID: $group"
+    cat <<EOF > /tmp/relay_instance_security_group_$group
+{
+    "RecordKey": {
+        "S": "relay-server:security-groups:${MANAGEMENT_DOMAIN}:${group}"
+    },
+    "RecordTtl": {
+        "N": "${END_OF_TIME}"
+    },
+    "RecordValue": {
+        "S": "{\"parameter_name\": \"security_groups\", \"parameter_type\": \"str\", \"parameter_value\": \"${group}\"}"
+    },
+    "CommandOnTtl": {
+        "S": "IGNORE"
+    },
+    "RecordOrigin": {
+        "S": "relay"
+    }
+}
+EOF
+    aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/relay_instance_security_group_$group
+done
+
+### DONE
 echo "MAIN SETUP DONE"
 
 nohup socat TCP-LISTEN:22,fork,reuseaddr TCP:localhost:2222

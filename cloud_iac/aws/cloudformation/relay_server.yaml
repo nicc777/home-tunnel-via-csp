@@ -311,6 +311,7 @@ Resources:
               export ARTIFACT_BUCKET_NAME=${ArtifactBucket}
               export STACK_NAME=${StackName}
               export SERVER_TTL=${ServerTtl}
+              export MANAGEMENT_DOMAIN=${ManagementDomain}
               
               echo
               echo "Main setup script location      : s3://${ArtifactBucket}/cumulus-tunnel-setup.sh"
@@ -336,6 +337,7 @@ Resources:
               ArtifactBucket: !Ref ArtifactBucketNameParam
               StackName: !Ref AWS::StackName
               ServerTtl: !Ref RelayServerTtlHoursParam
+              ManagementDomain: !Ref ManagementDomainRecordParam
 
 # TODO - Create exports for all references 
 # TODO - Create unique DNS records for the admin server.
