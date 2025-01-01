@@ -11,6 +11,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 import requests
+import coloredlogs
 from cumulus_tunnel_agent.args import runtime_options
 
 
@@ -21,17 +22,12 @@ HOSTNAME = socket.gethostname()
 if runtime_options.debug is True:
     DEBUG = True
 
+SELECTED_LOG_LEVEL = logging.INFO
+if DEBUG is True:
+    SELECTED_LOG_LEVEL = logging.DEBUG
+
+coloredlogs.install(SELECTED_LOG_LEVEL, fmt='%(asctime)s -  %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
 logger = logging.getLogger('cumulus_tunnel_agent')
-logger.setLevel(logging.INFO)
-if DEBUG is True:
-    logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.INFO)
-if DEBUG is True:
-    ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 logger.info('DNS Updates every {} second with the client identifier set to  "{}"'.format(runtime_options.update_interval_seconds, runtime_options.agent_name))
