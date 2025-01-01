@@ -7,6 +7,7 @@ import socket
 import traceback
 import copy
 import ipaddress
+import hashlib
 from datetime import datetime, timedelta
 
 import requests
@@ -242,6 +243,210 @@ def post_data(url: str, data:dict, extra_headers: dict):
     return int(status_code), json_response, response_text
 
 
+def convert_to_integer(val)->int:
+    try:
+        if isinstance(val, int):
+            return val
+        elif isinstance(val, float):
+            return int(val)
+        elif isinstance(val, str):
+            return int(val)
+    except:
+        logger.warning('Failed to convert port value "{}" (type={}) to an integer'.format(val, type(val)))
+        return None
+
+
+def is_port_valid(port:int)->bool:
+    if port is None:
+        logger.warning('No port value supplied')
+        return False
+    if port < 1:
+        logger.warning('Port value MUST be greater than 1')
+        return False
+    if port > 65535:
+        logger.warning('Port value MUST be less than or equal to 65535')
+        return False
+    return True
+
+
+def checksum_from_dict(data: dict)->str:
+    data_json_str = json.dumps(data, default=str, sort_keys=True)
+    logger.debug('Calculating checksum for data: {}'.format(data_json_str))
+    encoded_string = data_json_str.encode('utf-8')
+    return hashlib.sha256(encoded_string).hexdigest()
+
+
+def build_rule_sets_from_normalized_data(
+    ports: dict,
+    addresses: dict,
+    agent_id: str,
+    rule_set_checksums: list,
+):
+    rule_sets = list()
+    logger.debug('input: ports              : {}'.format(json.dumps(ports, default=str)))
+    logger.debug('input: addresses          : {}'.format(json.dumps(addresses, default=str)))
+    logger.debug('input: agent_id           : {}'.format(agent_id))
+    logger.debug('input: rule_set_checksums : {}'.format(json.dumps(rule_set_checksums, default=str)))
+    for port_type, port_collect in ports.items():
+        port_type_val = 'TCP'
+        if port_type.lower() == 'udp':
+            port_type_val = 'UDP'
+        for port in port_collect:
+            port_as_int = convert_to_integer(val=port)
+            if is_port_valid(port=port_as_int) is True:
+                address_family: str
+                ip_addresses: list
+                for address_family, ip_addresses in addresses.items():
+                    for ip_address in ip_addresses:
+                        rule_set = dict()
+                        rule_set['RuleName'] = '{}:{}'.format(agent_id, address_family)
+                        rule_set['Port'] = copy.deepcopy(port_as_int)
+                        rule_set['PortType'] = '{}'.format(port_type_val)
+                        rule_set['SourceAddress'] = '{}'.format(copy.deepcopy(ip_address))
+                        rule_set_checksum = checksum_from_dict(data=rule_set)
+                        if rule_set_checksum not in rule_set_checksums:
+                            logger.debug('Added rule set: {}'.format(json.dumps(rule_set, default=str, indent=4)))
+                            rule_sets.append(rule_set)
+                            rule_set_checksums.append(rule_set_checksum)
+                            logger.info('Added rule with checksum "{}"'.format(rule_set_checksum))
+                        else:
+                            logger.warning('Already added rule with checksum "{}"'.format(rule_set_checksum))
+    logger.debug('result: rule_sets          : {}'.format(json.dumps(rule_sets, default=str)))
+    logger.debug('result: rule_set_checksums : {}'.format(json.dumps(rule_set_checksums, default=str)))
+    return rule_sets, rule_set_checksums
+
+
+def build_rule_sets_from_net_address_data(data: dict)->tuple:
+    """
+        "NatAddressData": {
+            "ipv4": "111.111.111.111/32",
+            "ipv6": "aaaa:aaaa:aaaa:0:aaaa:aaaa:aaaa:aaaa/128",
+            "ports": {
+                "tcp": [
+                    "1234",
+                    "5678"
+                ]
+            }
+        }
+    """
+    if 'NatAddressData' not in data:
+        logger.warning('Key "NatAddressData" not in data')
+        return list(), list()
+    if 'AgentId' not in data:
+        logger.warning('Key "AgentId" not in data')
+        return list(), list()
+    agent_id = data['AgentId']
+    net_address_data = data['NatAddressData']
+    ipv4_address = None
+    ipv6_address = None
+    addresses = dict()
+    ports = dict()
+    if 'ipv4' in net_address_data:
+        ipv4_address = net_address_data['ipv4']
+    if 'ipv6' in net_address_data:
+        ipv6_address = net_address_data['ipv6']
+    if 'ports' in net_address_data:
+        ports = net_address_data['ports']
+    if len(ports) == 0:
+        logger.warning('No ports. No point of submitting any data')
+        return list(), list()
+    if ipv4_address is None and ipv6_address is None:
+        logger.warning('At least either an IPv4 or IPv6 address must be supplied. No point of submitting any data')
+        return list(), list()
+    if ipv4_address is not None:
+        addresses['ipv4'] = [ipv4_address, ]
+    if ipv6_address is not None:
+        addresses['ipv6'] = [ipv6_address, ]
+
+    logger.debug('addresses: {}'.format(json.dumps(addresses, default=str)))
+    logger.info('Building rule set from "NatAddressData" data')
+    return build_rule_sets_from_normalized_data(
+        ports=ports,
+        addresses=addresses,
+        agent_id=agent_id,
+        rule_set_checksums=list(),
+    )
+    
+
+
+def build_rule_sets_from_extra_ip_address_data(data: dict, rule_set_checksums: list)->list:
+    """
+        "ExtraIpAddressData": {
+            "addresses": {
+                "ipv4": [
+                    "192.168.2.1/32",
+                    "192.168.2.2/32"
+                ],
+                "ipv6": [
+                    "2a02:a466:bce4:0:b06b:578f:6718:aaaa/128"
+                ]
+            },
+            "ports": {
+                "tcp": [
+                    "8999",
+                    "5000"
+                ]
+            }
+        }
+    """
+
+    if 'ExtraIpAddressData' not in data:
+        logger.warning('Key "ExtraIpAddressData" not in data')
+        return list(), list()
+    if 'AgentId' not in data:
+        logger.warning('Key "AgentId" not in data')
+        return list(), list()
+    agent_id = data['AgentId']
+    extra_ip_address_data = data['ExtraIpAddressData']
+
+    if 'addresses' not in extra_ip_address_data:
+        logger.warning('Key "addresses" not in data')
+        return list(), list()
+    addresses = extra_ip_address_data['addresses']
+    if len(addresses) == 0:
+        logger.warning('Key "addresses" does not contain any data')
+        return list(), list()
+    
+    ports = dict()
+    if 'ports' in extra_ip_address_data:
+        ports = extra_ip_address_data['ports']
+    if len(ports) == 0:
+        logger.warning('No ports. No point of submitting any data')
+        return list(), list()
+    
+    logger.info('Building rule set from "ExtraIpAddressData" data')
+    return build_rule_sets_from_normalized_data(
+        ports=ports,
+        addresses=addresses,
+        agent_id=agent_id,
+        rule_set_checksums=rule_set_checksums,
+    )
+
+
+def build_rules(data: dict)->dict:
+    rules = dict()
+    if 'AgentId' not in data:
+        logger.warning('Key "AgentId" not in data')
+        return rules
+    agent_id = data['AgentId']
+    rules['RuleSetsChecksum'] = None
+    rules['RuleSets'] = list()
+    rules['RuleSetsKey'] = 'RuleSets:{}'.format(agent_id)
+    rule_sets = list()
+
+    net_address_data_rule_sets, rule_set_checksums = build_rule_sets_from_net_address_data(data=data)
+    if len(net_address_data_rule_sets) > 0:
+        rule_sets += net_address_data_rule_sets
+
+    extra_ip_address_rule_sets, rule_set_checksums = build_rule_sets_from_extra_ip_address_data(data=data, rule_set_checksums=rule_set_checksums)
+    if len(extra_ip_address_rule_sets) > 0:
+        rule_sets += extra_ip_address_rule_sets
+
+    rules['RuleSetsChecksum'] = checksum_from_dict(data={'RuleSets': rule_sets})
+    rules['RuleSets'] = rule_sets
+    return rules
+
+
 def agent_main():
     logger.info('starting')
     logger.info('API URL set to: {}'.format(runtime_options.api_url))
@@ -254,7 +459,10 @@ def agent_main():
         logger.debug('API Configuration: \n{}\n\n'.format(json.dumps(runtime_options.api_config, default=str, indent=4)))
         status_code, json_response, response_text = post_data(
             url=runtime_options.api_url,
-            data=collected_agent_data,
+            data={
+                'command': 'reconcile_agent_rules',
+                'command_parameters': build_rules(data=collected_agent_data),
+            },
             extra_headers=runtime_options.api_headers
         )
         logger.info('Submitted data. Return code: {}'.format(status_code))
