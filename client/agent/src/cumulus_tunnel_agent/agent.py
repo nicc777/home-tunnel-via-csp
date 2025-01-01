@@ -238,7 +238,7 @@ def post_data(url: str, data:dict, extra_headers: dict):
         try:
             json_response = response.json()
         except json.JSONDecodeError:
-            print(f"Warning: Could not decode JSON response: {response_text}")
+            logger.error('Warning: Could not decode JSON response: {}'.format(response_text))
     return int(status_code), json_response, response_text
 
 

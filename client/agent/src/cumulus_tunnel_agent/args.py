@@ -6,6 +6,8 @@ import json
 import copy
 from pathlib import Path
 
+from cumulus_tunnel_agent.state import StateManagementFunctions
+
 
 DEFAULT_PORTS = "80,443"
 
@@ -32,14 +34,26 @@ class RuntimeOptions:
         self.api_config = dict()
         self.relay_id = 'default'
 
-    def load_api_configuration(self, config_file: str):
-        with open(config_file, 'r') as f:
-            data_json = f.read()
-        data = json.loads(data_json)
+    def _set_config_from_data(self, data: dict):
         self.api_config = copy.deepcopy(data)
         self.api_url = copy.deepcopy(data['ApiUrl'])
         self.api_headers = copy.deepcopy(data['Headers'])
         self.api_headers['origin'] = 'agent'
+
+    def load_api_configuration(self, config_file: str):
+        with open(config_file, 'r') as f:
+            data_json = f.read()
+        data = json.loads(data_json)
+        self._set_config_from_data(data=data)
+
+    def load_api_configuration_from_cache(self, state_file_path: str):
+        state_functions = StateManagementFunctions(state_file_path=state_file_path)
+        previous_state_config = state_functions.get_state(state_key='state_config:{}'.format(args.relay_id))
+        if previous_state_config is None:
+            raise Exception('No prior state exists')
+        if 'api_config' not in previous_state_config:
+            raise Exception('Required API config not present in state data')
+        self._set_config_from_data(data=previous_state_config['api_config'])
 
     def get_agent_key_name(self)->str:
         return 'agent-{}.json'.format(self.agent_name)
@@ -127,6 +141,15 @@ parser.add_argument(
     default='default',
     required=False
 )
+parser.add_argument(
+    '--state-file',
+    help='The full path to the state file to use. This will be a normal SQLite DB data file.',
+    action='store',
+    type=str,
+    dest='state_file',
+    default='{}{}.cumulus_tunnel_state.sqlite'.format(Path.home(), os.sep),
+    required=False
+)
 
 
 args = parser.parse_args()
@@ -136,8 +159,9 @@ runtime_options.debug = args.verbose
 runtime_options.update_interval_seconds = int(args.update_interval_seconds)
 
 if os.path.exists(args.api_config_file_path) is False:
-    raise Exception('API Configuration File Not Found: {}'.format(args.api_config_file_path))
-runtime_options.load_api_configuration(config_file=args.api_config_file_path)
+    runtime_options.load_api_configuration_from_cache(state_file_path=args.state_file)
+else:
+    runtime_options.load_api_configuration(config_file=args.api_config_file_path)
 
 runtime_options.relay_id = '{}'.format(args.relay_id)
 
