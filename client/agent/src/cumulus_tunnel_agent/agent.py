@@ -444,6 +444,7 @@ def build_rules(data: dict)->dict:
 
     rules['RuleSetsChecksum'] = checksum_from_dict(data={'RuleSets': rule_sets})
     rules['RuleSets'] = rule_sets
+    rules['TargetRelayId'] = runtime_options.relay_id
     return rules
 
 
