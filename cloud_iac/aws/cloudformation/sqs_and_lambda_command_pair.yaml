@@ -299,7 +299,12 @@ Resources:
             - iam:RemoveRoleFromInstanceProfile
             - iam:DeleteRole
             Resource: "*"
-
+          # DynamoDB
+          - Effect: Allow
+            Action:
+            - dynamodb:Scan
+            Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/cumulus-tunnel"
+  
 
   ########################################
   ###
