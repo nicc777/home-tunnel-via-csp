@@ -25,6 +25,8 @@ logger.addHandler(ch)
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
+# Prevent duplicate log entries
+logger.propagate = False
 
 def get_deployed_cloudformation_stack_names(next_token: str=None)->list:
     stack_names = list()

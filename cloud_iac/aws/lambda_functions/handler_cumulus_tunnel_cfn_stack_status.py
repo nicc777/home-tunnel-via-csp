@@ -25,6 +25,9 @@ logger.addHandler(ch)
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
+# Prevent duplicate log entries
+logger.propagate = False
+
 
 def format_response(status_code: int=200, body: dict=dict()):
     return {

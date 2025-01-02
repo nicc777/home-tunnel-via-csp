@@ -26,6 +26,9 @@ logger.addHandler(ch)
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
+# Prevent duplicate log entries
+logger.propagate = False
+
 
 def scan_dynamodb_table(table_name, filter_expression=None, expression_attribute_values=None):
     # This code obtained via Google Gemini - Slightly modified, but seems to work ok

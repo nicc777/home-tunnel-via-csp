@@ -29,6 +29,7 @@ logger.addHandler(ch)
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
+# Prevent duplicate log entries
 logger.propagate = False
 
 
