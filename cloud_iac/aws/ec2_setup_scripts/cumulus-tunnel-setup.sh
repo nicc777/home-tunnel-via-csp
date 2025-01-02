@@ -29,7 +29,7 @@ echo "rtu:${PW}" | chpasswd
 
 
 # Save the STACK_NAME value for this relay server
-export EXPIRE_TTL=`date -u -d "${SERVER_TTL} hours" +%s`
+EXPIRE_TTL=`date -u -d "${SERVER_TTL} hours" +%s`
 cat <<EOF > /tmp/stack_data_for_db
 {
     "RecordKey": {
@@ -57,6 +57,7 @@ END_OF_TIME=32503680000 # At this point, who cares?
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
 SECURITY_GROUP_IDS=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/security-groups)
+INSTANCE_ID_RECORD_KEY="relay-server:instance-id:${MANAGEMENT_DOMAIN}"
 
 echo "Instance ID: $INSTANCE_ID"
 echo "Security Group IDs: $SECURITY_GROUP_IDS"
@@ -64,49 +65,55 @@ echo "Security Group IDs: $SECURITY_GROUP_IDS"
 cat <<EOF > /tmp/relay_instance_id
 {
     "RecordKey": {
-        "S": "relay-server:instance-id:${MANAGEMENT_DOMAIN}"
+        "S": "${INSTANCE_ID_RECORD_KEY}"
     },
     "RecordTtl": {
-        "N": "${END_OF_TIME}"
+        "N": "${EXPIRE_TTL}"
     },
     "RecordValue": {
-        "S": "{\"parameter_name\": \"instance_id\", \"parameter_type\": \"str\", \"parameter_value\": \"${INSTANCE_ID}\"}"
+        "S": "[{\"parameter_name\": \"RecordKey\", \"parameter_type\": \"str\", \"parameter_value\": \"$INSTANCE_ID_RECORD_KEY\"},{\"parameter_name\": \"RecordTtl\", \"parameter_type\": \"str\", \"parameter_value\": \"$EXPIRE_TTL\"}]"
     },
     "CommandOnTtl": {
-        "S": "IGNORE"
+        "S": "delete_dynamodb_record"
     },
     "RecordOrigin": {
-        "S": "relay"
+        "S": "resource"
     }
 }
 EOF
 aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/relay_instance_id
 
 
-echo "Looping through security groups:"
-IFS=$'\n' read -r -d '' array <<< "$SECURITY_GROUP_IDS"
+aws ec2 describe-instances \
+--instance-ids $INSTANCE_ID \
+--query 'Reservations[*].Instances[*].SecurityGroups[*].GroupId' \
+--output json | jq -r '.[]' | jq -r '.[] | @csv' | sed 's/"//g'
+
+IFS=',' read -r -a array <<< "$my_list"
+
 for group in "${array[@]}"; do
-    echo "Security Group ID: $group"
-    cat <<EOF > /tmp/relay_instance_security_group_$group
+  echo "Security Group ID: $group"
+  RECORD_KEY="relay-server:security-groups:${MANAGEMENT_DOMAIN}:${group}"
+cat <<EOF > /tmp/relay_instance_security_group
 {
     "RecordKey": {
-        "S": "relay-server:security-groups:${MANAGEMENT_DOMAIN}:${group}"
+        "S": "${RECORD_KEY}"
     },
     "RecordTtl": {
-        "N": "${END_OF_TIME}"
+        "N": "${EXPIRE_TTL}"
     },
     "RecordValue": {
-        "S": "{\"parameter_name\": \"security_groups\", \"parameter_type\": \"str\", \"parameter_value\": \"${group}\"}"
+        "S": "[{\"parameter_name\": \"RecordKey\", \"parameter_type\": \"str\", \"parameter_value\": \"$RECORD_KEY\"},{\"parameter_name\": \"RecordTtl\", \"parameter_type\": \"str\", \"parameter_value\": \"$EXPIRE_TTL\"}]"
     },
     "CommandOnTtl": {
-        "S": "IGNORE"
+        "S": "delete_dynamodb_record"
     },
     "RecordOrigin": {
-        "S": "relay"
+        "S": "resource"
     }
 }
 EOF
-    aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/relay_instance_security_group_$group
+    aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/relay_instance_security_group
 done
 
 ### DONE

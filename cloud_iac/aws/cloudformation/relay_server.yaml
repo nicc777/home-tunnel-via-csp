@@ -98,7 +98,7 @@ Resources:
     Properties:
       GroupDescription: Security group for the EC2 Instance hosting the tunnels
       VpcId: !Ref VpcId1Param
-      GroupName: !Sub '${AWS::StackName}-relay-server-sg'
+      GroupName: !Sub '${ManagementDomainRecordParam}-relay-server-sg'
 
   RelayServerSgIpv4Port2022Ingress:
     Type: AWS::EC2::SecurityGroupIngress
@@ -185,7 +185,7 @@ Resources:
     Properties:
       GroupDescription: Security group for the EC2 Instance hosting the tunnels
       VpcId: !Ref VpcId1Param
-      GroupName: !Sub '${AWS::StackName}-alb-sg'
+      GroupName: !Sub '${ManagementDomainRecordParam}-alb-sg'
 
   RelayServerAlbSgIpv4Egress:
     Type: AWS::EC2::SecurityGroupEgress
@@ -253,6 +253,14 @@ Resources:
             - 'dynamodb:PutItem'
             Effect: 'Allow'
             Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/cumulus-tunnel'
+      - PolicyName: !Sub '${ManagementDomainRecordParam}-policy-4'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement: 
+          - Action: 
+            - 'ec2:DescribeInstances'
+            Effect: 'Allow'
+            Resource: "*"
       Path: /
       RoleName: !Sub '${ManagementDomainRecordParam}-RelayServerRole1'
 
