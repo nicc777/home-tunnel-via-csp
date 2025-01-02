@@ -169,7 +169,7 @@ Resources:
             - "logs:CreateLogStream"
             - "logs:PutLogEvents"
             Resource: arn:aws:logs:*:*:*
-          # networkinterface
+          # networkinterface + sg rules management
           - Effect: Allow
             Action:
             - "ec2:DescribeNetworkinterfaces"
@@ -178,6 +178,8 @@ Resources:
             - "ec2:DescribeVpcs"
             - "ec2:DescribeSubnets"
             - "ec2:CreateNetworkinterface"
+            - "ec2:RevokeSecurityGroupIngress"
+            - "ec2:AuthorizeSecurityGroupIngress"
             Resource: "*"
           # sqs
           - Effect: Allow

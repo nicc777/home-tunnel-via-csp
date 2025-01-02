@@ -288,6 +288,97 @@ def convert_incoming_rules_to_standard_list_of_strings(rule_sets: list)->list:
     return agent_rules
 
 
+def add_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip):
+    """Adds an ingress rule to a security group.
+
+    Args:
+        group_id (str): The ID of the security group.
+        ip_protocol (str): The IP protocol (e.g., 'tcp', 'udp', 'icmp', '-1' for all).
+        from_port (int): The starting port number.
+        to_port (int): The ending port number.
+        cidr_ip (str): The CIDR IP address range (e.g., '192.168.1.0/24', '0.0.0.0/0' for all).
+
+    Returns:
+      bool: True on success, False on failure.
+      str: Error message or None on success.
+    """
+    try:
+        ec2 = boto3.client('ec2')
+        response = ec2.authorize_security_group_ingress(
+            GroupId=group_id,
+            IpPermissions=[
+                {
+                    'IpProtocol': ip_protocol,
+                    'FromPort': from_port,
+                    'ToPort': to_port,
+                    'IpRanges': [{'CidrIp': cidr_ip}]
+                }
+            ]
+        )
+        logger.debug('response: {}'.format(response))
+        return True, None
+    except Exception as e:
+        logger.error('Failed to add rule to security group "{}": {}'.format(group_id, str(e)))
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        return False, str(e)
+
+def delete_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip):
+    """Deletes an ingress rule from a security group.
+
+    Args:
+        group_id (str): The ID of the security group.
+        ip_protocol (str): The IP protocol (e.g., 'tcp', 'udp', 'icmp', '-1' for all).
+        from_port (int): The starting port number.
+        to_port (int): The ending port number.
+        cidr_ip (str): The CIDR IP address range (e.g., '192.168.1.0/24', '0.0.0.0/0' for all).
+
+    Returns:
+      bool: True on success, False on failure.
+      str: Error message or None on success.
+    """
+    try:
+        ec2 = boto3.client('ec2')
+        response = ec2.revoke_security_group_ingress(
+            GroupId=group_id,
+            IpPermissions=[
+                {
+                    'IpProtocol': ip_protocol,
+                    'FromPort': from_port,
+                    'ToPort': to_port,
+                    'IpRanges': [{'CidrIp': cidr_ip}]
+                }
+            ]
+        )
+        logger.debug('response: {}'.format(response))
+        return True, None
+    except Exception as e:
+        logger.error('Failed to delete rule from security group "{}": {}'.format(group_id, str(e)))
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+        return False, str(e)
+
+
+def determine_desired_state(current_agent_rules: list, incoming_agent_rules:list)->dict:
+    sg_actions = dict()
+    sg_actions['Add'] = list()
+    sg_actions['Delete'] = list()
+    sg_actions['NoAction'] = list()
+
+    # NEW rules required:
+    for rule in incoming_agent_rules:
+        if rule not in current_agent_rules:
+            sg_actions['Add'].append(rule)
+
+    # DELETE rules no longer required
+    for rule in current_agent_rules:
+        if rule not in incoming_agent_rules:
+            sg_actions['Delete'].append(rule)
+        else:
+            sg_actions['NoAction'].append(rule)
+
+    logger.info('CALCULATED ACTIONS: {}'.format(json.dumps(sg_actions, default=str)))
+    return sg_actions
+
+
 def handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     for record in extract_records(event=event):
@@ -313,6 +404,11 @@ def handler(event, context):
         )
 
         incoming_agent_rules = convert_incoming_rules_to_standard_list_of_strings(rule_sets=record['RuleSets'])
+
+        calculated_actions = determine_desired_state(
+            current_agent_rules=current_agent_rules,
+            incoming_agent_rules=incoming_agent_rules
+        )
 
     return "ok"
 
