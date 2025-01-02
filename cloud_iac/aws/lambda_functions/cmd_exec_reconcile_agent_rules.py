@@ -288,33 +288,61 @@ def convert_incoming_rules_to_standard_list_of_strings(rule_sets: list)->list:
     return agent_rules
 
 
-def add_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip):
-    """Adds an ingress rule to a security group.
-
-    Args:
-        group_id (str): The ID of the security group.
-        ip_protocol (str): The IP protocol (e.g., 'tcp', 'udp', 'icmp', '-1' for all).
-        from_port (int): The starting port number.
-        to_port (int): The ending port number.
-        cidr_ip (str): The CIDR IP address range (e.g., '192.168.1.0/24', '0.0.0.0/0' for all).
-
-    Returns:
-      bool: True on success, False on failure.
-      str: Error message or None on success.
+def build_ip_permissions_record(cidr_type: str, cidr_ip: str, ip_protocol: str, from_port: str, to_port: str)->list:
     """
-    try:
-        ec2 = boto3.client('ec2')
-        response = ec2.authorize_security_group_ingress(
-            GroupId=group_id,
-            IpPermissions=[
+    IpPermissions=[
+        {
+            'IpProtocol': 'string',
+            'FromPort': 123,
+            'ToPort': 123,
+            
+            'IpRanges': [
                 {
-                    'IpProtocol': ip_protocol,
-                    'FromPort': from_port,
-                    'ToPort': to_port,
-                    'IpRanges': [{'CidrIp': cidr_ip}]
-                }
-            ]
+                    'Description': 'string',
+                    'CidrIp': 'string'
+                },
+            ],
+            'Ipv6Ranges': [
+                {
+                    'Description': 'string',
+                    'CidrIpv6': 'string'
+                },
+            ],
+            
+        },
+    ],
+    """
+    field_ip_ranges_name = 'IpRanges'
+    cidr_field_name = 'CidrIp'
+    if cidr_type == 'ipv6':
+        field_ip_ranges_name = 'Ipv6Ranges'
+        cidr_field_name = 'CidrIpv6'
+    ip_permissions = list()
+    cidr_ranges = list()
+    cidr_range_record = dict()
+    cidr_range_record[cidr_field_name] = cidr_ip
+    cidr_ranges.append(cidr_range_record)
+    ip_permission_record = dict()
+    ip_permission_record['IpProtocol'] = ip_protocol
+    ip_permission_record['FromPort'] = int(from_port)
+    ip_permission_record['ToPort'] = int(to_port)
+    ip_permission_record[field_ip_ranges_name] = cidr_ranges
+    ip_permissions.append(ip_permission_record)
+    logger.debug('ip_permission_record: {}'.format(json.dumps(ip_permission_record, default=str)))
+    return ip_permissions
+
+
+def add_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip, cidr_type: str='ipv4'):
+    try:
+        ip_permissions = build_ip_permissions_record(
+            cidr_type=cidr_type,
+            cidr_ip=cidr_ip,
+            ip_protocol=ip_protocol,
+            from_port=from_port,
+            to_port=to_port
         )
+        ec2 = boto3.client('ec2')
+        response = ec2.authorize_security_group_ingress(GroupId=group_id,IpPermissions=ip_permissions)
         logger.debug('response: {}'.format(response))
         return True, None
     except Exception as e:
@@ -322,33 +350,17 @@ def add_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip):
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
         return False, str(e)
 
-def delete_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip):
-    """Deletes an ingress rule from a security group.
-
-    Args:
-        group_id (str): The ID of the security group.
-        ip_protocol (str): The IP protocol (e.g., 'tcp', 'udp', 'icmp', '-1' for all).
-        from_port (int): The starting port number.
-        to_port (int): The ending port number.
-        cidr_ip (str): The CIDR IP address range (e.g., '192.168.1.0/24', '0.0.0.0/0' for all).
-
-    Returns:
-      bool: True on success, False on failure.
-      str: Error message or None on success.
-    """
+def delete_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip, cidr_type: str='ipv4'):
     try:
-        ec2 = boto3.client('ec2')
-        response = ec2.revoke_security_group_ingress(
-            GroupId=group_id,
-            IpPermissions=[
-                {
-                    'IpProtocol': ip_protocol,
-                    'FromPort': from_port,
-                    'ToPort': to_port,
-                    'IpRanges': [{'CidrIp': cidr_ip}]
-                }
-            ]
+        ip_permissions = build_ip_permissions_record(
+            cidr_type=cidr_type,
+            cidr_ip=cidr_ip,
+            ip_protocol=ip_protocol,
+            from_port=from_port,
+            to_port=to_port
         )
+        ec2 = boto3.client('ec2')
+        response = ec2.revoke_security_group_ingress(GroupId=group_id,IpPermissions=ip_permissions)
         logger.debug('response: {}'.format(response))
         return True, None
     except Exception as e:
@@ -377,6 +389,51 @@ def determine_desired_state(current_agent_rules: list, incoming_agent_rules:list
 
     logger.info('CALCULATED ACTIONS: {}'.format(json.dumps(sg_actions, default=str)))
     return sg_actions
+
+
+def prep_action_variables(action_line: str)->tuple:
+    rule_type, protocol_type, port, cidr = action_line.split('|')
+    cidr_type = 'ipv4'
+    final_protocol_type = '{}'.format(protocol_type)
+    final_protocol_type = final_protocol_type.lower()
+    if ':' in cidr:
+        cidr_type = 'ipv6'
+    try:
+        final_protocol_type = int(protocol_type)
+    except:
+        pass
+    return rule_type, final_protocol_type, port, cidr, cidr_type
+
+
+def process_actions(calculated_actions: dict, group_id:str):
+    for action_line in calculated_actions['Delete']:
+        rule_type, final_protocol_type, port, cidr, cidr_type = prep_action_variables(action_line=action_line)
+        if rule_type == '1':
+            logger.warning('Egress rules are not yet supported')
+            continue
+        result, error = delete_ingress_rule(
+            group_id=group_id,
+            ip_protocol=final_protocol_type,
+            from_port=port,
+            to_port=port,
+            cidr_ip=cidr,
+            cidr_type=cidr_type
+        )
+        logger.info('DELETE RULE ACTION: {} --> {} / {}'.format(action_line, result, error))
+    for action_line in calculated_actions['Add']:
+        rule_type, final_protocol_type, port, cidr, cidr_type = prep_action_variables(action_line=action_line)
+        if rule_type == '1':
+            logger.warning('Egress rules are not yet supported')
+            continue
+        result, error = add_ingress_rule(
+            group_id=group_id,
+            ip_protocol=final_protocol_type,
+            from_port=port,
+            to_port=port,
+            cidr_ip=cidr,
+            cidr_type=cidr_type
+        )
+        logger.info('NEW RULE ACTION: {} --> {} / {}'.format(action_line, result, error))
 
 
 def handler(event, context):
@@ -409,6 +466,7 @@ def handler(event, context):
             current_agent_rules=current_agent_rules,
             incoming_agent_rules=incoming_agent_rules
         )
+        process_actions(calculated_actions=calculated_actions, group_id=security_group_id)
 
     return "ok"
 
