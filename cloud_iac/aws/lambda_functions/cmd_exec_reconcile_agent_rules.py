@@ -9,6 +9,14 @@ from boto3.dynamodb.conditions import Attr
 
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))
+STANDARD_SG_RULES_IGNORE_STRINGS = [
+    '0|TCP|2022|::/0',
+    '0|TCP|2022|0.0.0.0/0',
+    '0|TCP|22|::/0',
+    '0|TCP|22|0.0.0.0/0',
+    '1|-1|-1|::/0',
+    '1|-1|-1|0.0.0.0/0',
+]
 
 
 logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
@@ -184,6 +192,101 @@ def get_current_security_group_rules(group_id: str, next_token: str=None)->list:
     return rules
 
 
+def convert_current_security_group_rules_to_standard_list_of_strings(rules: list)->list:
+    lines = list()
+    for rule in rules:
+        """
+        INPUT: 
+
+            {
+                "IsEgress": true,
+                "IpProtocol": "-1",
+                "FromPort": -1,
+                "ToPort": -1,
+                "CIDR": "::/0",
+                "Description": null
+            }
+
+        LINE:
+
+            IsEgress | IpProtocol | Port | CIDR
+            1|-1|-1|::/0
+        """
+        logger.debug('Evaluating Rule: {}'.format(json.dumps(rule, default=str)))
+        if rule['FromPort'] != rule['ToPort']:
+            logger.warning('Strange rule with from and to ports being different - ignoring for now')
+            continue
+        is_egress = 0
+        if rule['IsEgress'] is True:
+            is_egress = 1
+        protocol = '{}'.format(rule['IpProtocol'])
+        protocol = protocol.upper()
+        port = rule['FromPort']
+        cidr = ''
+        if 'CIDR' in rule:
+            cidr = rule['CIDR']
+        if len(cidr) > 0:
+            lines.append(
+                '{}|{}|{}|{}'.format(
+                    is_egress,
+                    protocol,
+                    port,
+                    cidr,
+                )
+            )
+        else:
+            logger.warning('CIDR not defined - ignoring rule for now')
+    logger.debug('lines: {}'.format(json.dumps(lines, default=str)))
+    return lines
+
+
+def current_agent_sg_rules_as_list_of_strings(current_rules: list)->list:
+    agent_rules = list()
+    current_rule: str
+    for current_rule in current_rules:
+        if current_rule in STANDARD_SG_RULES_IGNORE_STRINGS:
+            logger.debug('Skipping a rule in the STANDARD_SG_RULES_IGNORE_STRINGS list: {}'.format(current_rule))
+            continue
+        if current_rule.startswith('1:'):
+            logger.debug('Skipping a rule that is an egress rule: {}'.format(current_rule))
+            continue
+        agent_rules.append(copy.deepcopy(current_rule))
+    logger.debug('Current Security Group Rules: {}'.format(json.dumps(agent_rules, default=str)))
+    return agent_rules
+
+
+def convert_incoming_rules_to_standard_list_of_strings(rule_sets: list)->list:
+    """
+        "RuleSets": [
+        {
+            "Port": 8999,
+            "PortType": "TCP",
+            "SourceAddress": "9.9.9.9/32",
+            "RuleName": "46b4bc525735b2069d9fc3938123c9b3d4a3a55a6fe61dd72e895eef2b6701e0"
+        },
+        {
+            "Port": 8999,
+            "PortType": "TCP",
+            "SourceAddress": "aaaa:aaaa:aaaa:0:aaaa:aaaa:aaaa:aaaa/128",
+            "RuleName": "a1c7cfe0ad4b9ec5527888b6a719a0e9c949ebfb9496b9b57232b9f2f92719b5"
+        },
+    """
+    agent_rules = list()
+    try:
+        for rule in rule_sets:
+            agent_rules.append(
+                '0|{}|{}|{}'.format(
+                    rule['PortType'],
+                    rule['Port'],
+                    rule['SourceAddress']
+                )
+            )
+    except Exception as e:
+        logger.error('Failed to convert incoming rules: {}'.format(str(e)))
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+    logger.debug('Incoming Agent Rule Requirements: {}'.format(json.dumps(agent_rules, default=str)))
+    return agent_rules
+
 
 def handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
@@ -204,6 +307,12 @@ def handler(event, context):
 
         current_security_group_rules = get_current_security_group_rules(group_id=security_group_id)
         logger.debug('current_security_group_rules: {}'.format(json.dumps(current_security_group_rules, default=str)))
+
+        current_agent_rules = current_agent_sg_rules_as_list_of_strings(
+            current_rules=convert_current_security_group_rules_to_standard_list_of_strings(rules=current_security_group_rules)
+        )
+
+        incoming_agent_rules = convert_incoming_rules_to_standard_list_of_strings(rule_sets=record['RuleSets'])
 
     return "ok"
 
