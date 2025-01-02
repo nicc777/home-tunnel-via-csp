@@ -52,8 +52,22 @@ def scan_dynamodb_table(table_name, filter_expression=None, expression_attribute
         return None, str(e)
 
 
+def extract_records(event)->list:
+    records = list()
+    try:
+        if 'Records' in event:
+            for record in event['Records']:
+                if 'body' in record:
+                    records.append(json.loads(record['body']))
+    except Exception as e:
+        logger.error('Failed to parse event and extract records: {}'.format(str(e)))
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+    return records
+
+
 def handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
-
+    for record in extract_records(event=event):
+        logger.debug('Processing record: {}'.format(json.dumps(record, default=str)))
     return "ok"
 

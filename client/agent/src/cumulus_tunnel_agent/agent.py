@@ -295,11 +295,11 @@ def build_rule_sets_from_normalized_data(
                 for address_family, ip_addresses in addresses.items():
                     for ip_address in ip_addresses:
                         rule_set = dict()
-                        rule_set['RuleName'] = '{}:{}'.format(agent_id, address_family)
                         rule_set['Port'] = copy.deepcopy(port_as_int)
                         rule_set['PortType'] = '{}'.format(port_type_val)
                         rule_set['SourceAddress'] = '{}'.format(copy.deepcopy(ip_address))
                         rule_set_checksum = checksum_from_dict(data=rule_set)
+                        rule_set['RuleName'] = '{}'.format(rule_set_checksum)
                         if rule_set_checksum not in rule_set_checksums:
                             logger.debug('Added rule set: {}'.format(json.dumps(rule_set, default=str, indent=4)))
                             rule_sets.append(rule_set)
