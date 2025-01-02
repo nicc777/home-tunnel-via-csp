@@ -142,6 +142,49 @@ def get_instance_id_and_security_group(instance_id_records: list, security_group
     return instance_id, security_group_id
 
 
+def get_current_security_group_rules(group_id: str, next_token: str=None)->list:
+    rules = list()
+    try:
+        filters = [
+            {
+                'Name': 'group-id',
+                'Values': [
+                    '{}'.format(group_id),
+                ]
+            },
+        ]
+        client = boto3.client('ec2')
+        response = dict()
+        if next_token is not None:
+            response = client.describe_security_group_rules(Filters=filters,NextToken=next_token)
+        else:
+            response = client.describe_security_group_rules(Filters=filters)
+        logger.debug('response: {}'.format(json.dumps(response, default=str)))
+        if 'NextToken' in response:
+            rules += get_current_security_group_rules(group_id=group_id, next_token=response['NextToken'])
+        if 'SecurityGroupRules' in response:
+            for rule_record in response['SecurityGroupRules']:
+                rule = dict()
+                rule['IsEgress'] = rule_record['IsEgress']
+                rule['IpProtocol'] = rule_record['IpProtocol']
+                rule['FromPort'] = rule_record['FromPort']
+                rule['ToPort'] = rule_record['ToPort']
+                if 'CidrIpv4' in rule_record:
+                    rule['CIDR'] = rule_record['CidrIpv4']
+                if 'CidrIpv6' in rule_record:
+                    rule['CIDR'] = rule_record['CidrIpv6']
+                if 'Description' in rule_record:
+                    rule['Description'] = rule_record['Description']
+                else:
+                    rule['Description'] = None
+                rules.append(rule)
+    except Exception as e:
+        logger.error('Failed to get rules for security group ID "{}": {}'.format(group_id, str(e)))
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+    return rules
+
+
+
 def handler(event, context):
     logger.debug('event: {}'.format(json.dumps(event, default=str)))
     for record in extract_records(event=event):
@@ -158,5 +201,9 @@ def handler(event, context):
         )
         
         logger.info('Latest instance ID is "{}" with security group ID: "{}"'.format(instance_id, security_group_id))
+
+        current_security_group_rules = get_current_security_group_rules(group_id=security_group_id)
+        logger.debug('current_security_group_rules: {}'.format(json.dumps(current_security_group_rules, default=str)))
+
     return "ok"
 
