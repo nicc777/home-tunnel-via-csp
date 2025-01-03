@@ -7,12 +7,18 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 # What problem is this solving
 
-> I have a private system not directly exposed to the internet and I want to expose at least some services to the Internet in a controlled and restricted way. This is similar to the `ngrok` tunneling solution. Why I don't use `ngrok` or other solutions is that the free options was too limiting and switching to a subscription would be too expensive and still leave me with some lacking features. I also have a concern about the potential for eves dropping or man-in-the-middle attacks from third party services. The latter could perhaps still be an issue with a Public Cloud provider, but since I control the SSH keys for the traffic tunneling, it feels a little more secure.
+> I have a private system not directly exposed to the internet and I want to expose at least some services to the Internet 
+> in a controlled and restricted way. This is similar to the `ngrok` tunneling solution. I don't use `ngrok` or other 
+> solutions is because the free options was too limiting and switching to a subscription would be too expensive and still 
+> leave me with some lacking features. I also have a concern about the potential for eves dropping or man-in-the-middle 
+> attacks from third party services. The latter could perhaps still be an issue with a Public Cloud provider, but since I 
+> control the SSH keys for the traffic tunneling, it feels a little more secure.
 
 # Project Status
 
 | Date       | Status           | Notes                                                                                                                                                                                                              |
 |------------|:----------------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2025-01-03 | Web Proxy        | Focusing on the web proxy next.                                                                                                                                                                                    |
 | 2025-01-02 | More or less MVP | Functionally everything now works from a technical perspective. Will focus next on some documentation and then packaging of the various services to make this a more user friendly solution.                       |
 |            |                  | The web reverse tunnel is still a major outstanding feature, but the current reverse tunnels provide an acceptable work around.                                                                                    |
 |            |                  | There is also still a lot of work left in terms of management web user interfaces.                                                                                                                                 |
