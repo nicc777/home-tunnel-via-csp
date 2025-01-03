@@ -479,6 +479,25 @@ def relay_server_recon(event: dict):
         process_actions(calculated_actions=calculated_actions, group_id=security_group_id)
 
 
+def create_alb_incoming_standard_rules(rule_sets: list)->list:
+    agent_rules = list()
+    try:
+        for rule_record in rule_sets:
+            source_address = rule_record['SourceAddress']
+            for port in ('80', '443', '8081',):
+                agent_rules.append(
+                    '0|tcp|{}|{}'.format(
+                        port,
+                        source_address
+                    )
+                )
+    except Exception as e:
+        logger.error('Failed to convert incoming rules: {}'.format(str(e)))
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+    logger.debug('Incoming Agent Rule Requirements: {}'.format(json.dumps(agent_rules, default=str)))
+    return agent_rules
+
+
 def alb_recon(event:dict):
     logger.info('==============================================')
     logger.info('===        ALB Security Group Recon        ===')
@@ -493,8 +512,18 @@ def alb_recon(event:dict):
         logger.info('Latest security group ID: "{}"'.format(security_group_id))
         current_security_group_rules = get_current_security_group_rules(group_id=security_group_id)
         logger.debug('current_security_group_rules: {}'.format(json.dumps(current_security_group_rules, default=str)))
-
-        # TODO complete.... Get the agent supplied P addresses and build ingress rules to ports 80,443 and 8081
+        current_agent_rules = current_agent_sg_rules_as_list_of_strings(
+            current_rules=convert_current_security_group_rules_to_standard_list_of_strings(
+                rules=current_security_group_rules
+            ),
+            ignore_list=list()
+        )
+        incoming_agent_rules = create_alb_incoming_standard_rules(rule_sets=record['RuleSets'])
+        calculated_actions = determine_desired_state(
+            current_agent_rules=current_agent_rules,
+            incoming_agent_rules=incoming_agent_rules
+        )
+        process_actions(calculated_actions=calculated_actions, group_id=security_group_id)
 
 
 def handler(event, context):
