@@ -32,6 +32,9 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 # Planned features
 
+> [!NOTE]  
+> This list is kinda variable as I adapt the implementation to my needs which changes as I discover things. It's a process of discovering how I want all this to work.
+
 * [X] Relay Server Agent
   * [ ] Python Package
   * [ ] Relay Server Admin UI (Web)
