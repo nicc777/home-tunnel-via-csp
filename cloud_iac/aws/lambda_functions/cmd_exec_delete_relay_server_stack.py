@@ -101,6 +101,10 @@ def handler(event, context):
     stack_name = None
     current_stacks = get_deployed_cloudformation_stack_names()
     logger.debug('Current CloudFormation stacks: {}'.format(current_stacks))
+
+    # TODO - Also delete all associated DNS records FIRST !!!
+    #           Get info via DynamoDB
+
     if 'Records' in event:
         for record in event['Records']:
             command_data = extract_body_as_dict_from_event_record(record=record)

@@ -84,13 +84,14 @@ aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/relay_inst
 MAIN_SECURITY_GROUP_NAME="${MANAGEMENT_DOMAIN}-relay-server-sg"
 MAIN_SECURITY_GROUP_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=${MAIN_SECURITY_GROUP_NAME}" --query 'SecurityGroups[*].GroupId' --output text)
 
-GROUPS_CSV=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[*].Instances[*].SecurityGroups[*].GroupId' --output json | jq -r '.[]' | jq -r '.[] | @csv' | sed 's/"//g')
-echo "Security Group ID: ${GROUPS_CSV}"
-RECORD_KEY="relay-server:security-group:${RELAY_SERVER_ID}"
+ALB_SECURITY_GROUP_NAME="${MANAGEMENT_DOMAIN}-alb-sg"
+ALB_SECURITY_GROUP_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=${ALB_SECURITY_GROUP_NAME}" --query 'SecurityGroups[*].GroupId' --output text)
+
+RECORD_KEY_MAIN_SG="relay-server:security-group:${RELAY_SERVER_ID}"
 cat <<EOF > /tmp/relay_instance_security_groups
 {
     "RecordKey": {
-        "S": "${RECORD_KEY}"
+        "S": "${RECORD_KEY_MAIN_SG}"
     },
     "RecordTtl": {
         "N": "${EXPIRE_TTL}"
@@ -107,6 +108,28 @@ cat <<EOF > /tmp/relay_instance_security_groups
 }
 EOF
 aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/relay_instance_security_groups
+
+RECORD_KEY_ALB_SG="relay-server:alb-security-group:${RELAY_SERVER_ID}"
+cat <<EOF > /tmp/alb_security_groups
+{
+    "RecordKey": {
+        "S": "${RECORD_KEY_ALB_SG}"
+    },
+    "RecordTtl": {
+        "N": "${EXPIRE_TTL}"
+    },
+    "RecordValue": {
+        "S": "{\"SecurityGroupName\": \"${ALB_SECURITY_GROUP_NAME}\", \"SecurityGroupId\": \"${ALB_SECURITY_GROUP_ID}\"}"
+    },
+    "CommandOnTtl": {
+        "S": "IGNORE"
+    },
+    "RecordOrigin": {
+        "S": "resource"
+    }
+}
+EOF
+aws dynamodb put-item --table-name cumulus-tunnel  --item file:///tmp/alb_security_groups
 
 ### DONE
 echo "MAIN SETUP DONE"
