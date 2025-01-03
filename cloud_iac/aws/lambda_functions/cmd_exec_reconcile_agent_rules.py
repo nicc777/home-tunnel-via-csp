@@ -130,23 +130,27 @@ def attempt_to_convert_str_to_dict(possible_json_data: str)->dict:
     return None
 
 
+def get_item_it(records: list, item_key_name: str)-> str:
+    try:
+        record = get_latest_record(records=records)
+        record_value = attempt_to_convert_str_to_dict(possible_json_data=record['RecordValue'])
+        return record_value[item_key_name]
+    except Exception as e:
+        logger.error('Failed to parse data: {}'.format(str(e)))
+        logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
+    return None
+
+
 def get_instance_id_and_security_group(instance_id_records: list, security_group_records: list)->tuple:
     instance_id = None
     security_group_id = None
-
     try:
-        instance_id_record = get_latest_record(records=instance_id_records)
-        instance_id_record_value = attempt_to_convert_str_to_dict(possible_json_data=instance_id_record['RecordValue'])
-        instance_id = instance_id_record_value['InstanceId']
-
-        security_group_record = get_latest_record(records=security_group_records)
-        security_group_record_value = attempt_to_convert_str_to_dict(possible_json_data=security_group_record['RecordValue'])
-        security_group_id = security_group_record_value['SecurityGroupId']
+        instance_id = get_item_it(records=instance_id_records, item_key_name='InstanceId')
+        security_group_id = get_item_it(records=security_group_records, item_key_name='SecurityGroupId')
 
     except Exception as e:
         logger.error('Failed to parse data: {}'.format(str(e)))
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
-
     return instance_id, security_group_id
 
 
@@ -240,12 +244,12 @@ def convert_current_security_group_rules_to_standard_list_of_strings(rules: list
     return lines
 
 
-def current_agent_sg_rules_as_list_of_strings(current_rules: list)->list:
+def current_agent_sg_rules_as_list_of_strings(current_rules: list, ignore_list: list=STANDARD_SG_RULES_IGNORE_STRINGS)->list:
     agent_rules = list()
     current_rule: str
     for current_rule in current_rules:
-        if current_rule in STANDARD_SG_RULES_IGNORE_STRINGS:
-            logger.debug('Skipping a rule in the STANDARD_SG_RULES_IGNORE_STRINGS list: {}'.format(current_rule))
+        if current_rule in ignore_list:
+            logger.debug('Skipping a rule in the ignore list: {}'.format(current_rule))
             continue
         if current_rule.startswith('1:'):
             logger.debug('Skipping a rule that is an egress rule: {}'.format(current_rule))
@@ -350,6 +354,7 @@ def add_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip, cidr_ty
         logger.debug('EXCEPTION: {}'.format(traceback.format_exc()))
         return False, str(e)
 
+
 def delete_ingress_rule(group_id, ip_protocol, from_port, to_port, cidr_ip, cidr_type: str='ipv4'):
     try:
         ip_permissions = build_ip_permissions_record(
@@ -436,8 +441,10 @@ def process_actions(calculated_actions: dict, group_id:str):
         logger.info('NEW RULE ACTION: {} --> {} / {}'.format(action_line, result, error))
 
 
-def handler(event, context):
-    logger.debug('event: {}'.format(json.dumps(event, default=str)))
+def relay_server_recon(event: dict):
+    logger.info('==============================================')
+    logger.info('===    Relay Server Security Group Recon   ===')
+    logger.info('==============================================')
     for record in extract_records(event=event):
         logger.debug('Processing record: {}'.format(json.dumps(record, default=str)))
         instance_id_records = get_records(relay_id=record['TargetRelayId'], key_begins_with='relay-server:instance-id:')
@@ -457,7 +464,10 @@ def handler(event, context):
         logger.debug('current_security_group_rules: {}'.format(json.dumps(current_security_group_rules, default=str)))
 
         current_agent_rules = current_agent_sg_rules_as_list_of_strings(
-            current_rules=convert_current_security_group_rules_to_standard_list_of_strings(rules=current_security_group_rules)
+            current_rules=convert_current_security_group_rules_to_standard_list_of_strings(
+                rules=current_security_group_rules
+            ),
+            ignore_list=STANDARD_SG_RULES_IGNORE_STRINGS
         )
 
         incoming_agent_rules = convert_incoming_rules_to_standard_list_of_strings(rule_sets=record['RuleSets'])
@@ -467,6 +477,31 @@ def handler(event, context):
             incoming_agent_rules=incoming_agent_rules
         )
         process_actions(calculated_actions=calculated_actions, group_id=security_group_id)
+
+
+def alb_recon(event:dict):
+    logger.info('==============================================')
+    logger.info('===        ALB Security Group Recon        ===')
+    logger.info('==============================================')
+    for record in extract_records(event=event):
+        logger.debug('Processing record: {}'.format(json.dumps(record, default=str)))
+        security_group_records = get_records(relay_id=record['TargetRelayId'], key_begins_with='relay-server:alb-security-group:')
+        if len(security_group_records) == 0:
+            logger.error('No records for relay "{}" found. Skipping.'.format(record['TargetRelayId']))
+            continue
+        security_group_id = get_item_it(records=security_group_records, item_key_name='SecurityGroupId')
+        logger.info('Latest security group ID: "{}"'.format(security_group_id))
+        current_security_group_rules = get_current_security_group_rules(group_id=security_group_id)
+        logger.debug('current_security_group_rules: {}'.format(json.dumps(current_security_group_rules, default=str)))
+
+        # TODO complete.... Get the agent supplied P addresses and build ingress rules to ports 80,443 and 8081
+
+
+def handler(event, context):
+    logger.debug('event: {}'.format(json.dumps(event, default=str)))
+    relay_server_recon(event=event)
+    alb_recon(event=event)
+    
 
     return "ok"
 
