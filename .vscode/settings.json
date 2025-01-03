@@ -6,6 +6,7 @@
         "botocore",
         "casefold",
         "coloredlogs",
+        "dnsname",
         "doseq",
         "errorfactory",
         "fastapi",
@@ -26,7 +27,8 @@
         "urlencode",
         "urllib",
         "urlopen",
-        "venv"
+        "venv",
+        "zoneid"
     ],
     "yaml.customTags": [
         "!Sub scalar",

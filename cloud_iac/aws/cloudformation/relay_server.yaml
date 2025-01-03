@@ -348,8 +348,6 @@ Resources:
               ServerTtl: !Ref RelayServerTtlHoursParam
               ManagementDomain: !Ref ManagementDomainRecordParam
 
-# TODO - Create exports for all references 
-# TODO - Create unique DNS records for the admin server.
 
   ########################################
   ###
@@ -513,4 +511,14 @@ Outputs:
     Value: !Ref RelayServerAutoscalingGroup
     Export:
       Name: 'RelayServerAutoscalingGroupName'
+
+  RelayServerAlbDNSName:
+    Value: !GetAtt  RelayServerAlb.DNSName
+    Export:
+      Name: !Sub '${ManagementDomainRecordParam}-alb-dnsname'
+
+  RelayServerAlbCanonicalHostedZoneID:
+    Value: !GetAtt  RelayServerAlb.CanonicalHostedZoneID
+    Export:
+      Name: !Sub '${ManagementDomainRecordParam}-alb-zoneid'
   
