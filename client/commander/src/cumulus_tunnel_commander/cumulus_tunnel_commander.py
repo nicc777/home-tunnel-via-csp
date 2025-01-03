@@ -123,7 +123,7 @@ class AwsRelayServer(RelayServer):
         else:
             response = client.list_stacks()
         if 'NextToken' in response:
-            stack_names += self._list_cloudformation_stacks(next_token=response['NextToken'])
+            stack_names += self._get_current_cloud_formation_stack_names(next_token=response['NextToken'])
         if 'StackSummaries' in response:
             for stack_summary in response['StackSummaries']:
                 if 'StackName' in stack_summary:
