@@ -151,6 +151,10 @@ curl https://${RELAY_SERVER_NAME}-admin.${PARAM_DOMAIN_NAME}/
 curl https://${RELAY_SERVER_NAME}-admin.${PARAM_DOMAIN_NAME}:8081/
 ```
 
+# Various Notes
+
+Python path on the relay server: `/usr/bin/python3`
+
 # API Command Structures
 
 ## General Format
