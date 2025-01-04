@@ -321,6 +321,7 @@ Resources:
               export STACK_NAME=${StackName}
               export SERVER_TTL=${ServerTtl}
               export MANAGEMENT_DOMAIN=${ManagementDomain}
+              export DOMAIN_NAME=${DomainName}
               
               echo
               echo "Main setup script location      : s3://${ArtifactBucket}/cumulus-tunnel-setup.sh"
@@ -347,6 +348,7 @@ Resources:
               StackName: !Ref AWS::StackName
               ServerTtl: !Ref RelayServerTtlHoursParam
               ManagementDomain: !Ref ManagementDomainRecordParam
+              DomainName: !Ref DefaultRoute53DomainParam
 
 
   ########################################
