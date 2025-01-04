@@ -18,6 +18,7 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 
 | Date       | Status           | Notes                                                                                                                                                                                                              |
 |------------|:----------------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2025-01-04 | Web Proxy        | Initial testing more or less work. Still some more testing required. Will also focus next on creating additional domain records mapping to the ALB.                                                                |
 | 2025-01-03 | Web Proxy        | Focusing on the web proxy next.                                                                                                                                                                                    |
 |            |                  | Adding rules to the ALB security group for clients to allow access to the Web Proxy.                                                                                                                               |
 | 2025-01-02 | More or less MVP | Functionally everything now works from a technical perspective. Will focus next on some documentation and then packaging of the various services to make this a more user friendly solution.                       |
@@ -45,7 +46,7 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
   * [ ] DNS For Instance Access from Agent via ALB (reverse proxy)
   * [X] Security Group rules for Instance Access on relay ports from clients
   * [X] Security Group rules for ALB access from clients
-  * [ ] Configuring the Reverse Proxy
+  * [X] Configuring the Reverse Proxy
   * [ ] Python Package
   * [ ] Admin Web UI
 * [X] Deployment Script
