@@ -11,6 +11,7 @@ sleep 5
 systemctl stop nginx
 rm -vf /etc/nginx/sites-enabled/default
 aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/nginx/sites-enabled/admin /etc/nginx/sites-enabled/admin
+aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/nginx/nginx.conf /etc/nginx/nginx.conf
 aws s3 cp s3://$ARTIFACT_BUCKET_NAME/var/www/html/index.html /var/www/html/index.html
 sed -i -e "s/__DOMAIN__/${DOMAIN_NAME}/g" /etc/nginx/sites-enabled/admin
 systemctl start nginx
@@ -22,6 +23,9 @@ aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/systemd/system/ssh.socket.d/override.co
 systemctl daemon-reload
 systemctl restart ssh.socket
 systemctl restart ssh
+
+# Wrapper script:
+aws s3 cp s3://$ARTIFACT_BUCKET_NAME/tmp/tunnel_connector_wrapper.py /tmp/tunnel_connector_wrapper.py
 
 # Create tunnel user
 export PW=`PAGER="" aws secretsmanager get-secret-value  --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" --query SecretString --output text | jq -r ".password" `

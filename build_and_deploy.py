@@ -1024,10 +1024,13 @@ SUPPORTED_CLOUD_SERVICE_PROVIDERS = {
 ARTIFACT_FILES = {
     # Local File                                                        Remote KEY
     'tunnel_instance/etc/nginx/sites-enabled/admin'                 :   'etc/nginx/sites-enabled/admin',
+    'tunnel_instance/etc/nginx/nginx.conf'                          :   'etc/nginx/nginx.conf',
     'tunnel_instance/var/www/html/index.html'                       :   'var/www/html/index.html',
 
     'tunnel_instance/etc/ssh/sshd_config'                           :   'etc/ssh/sshd_config',
     'tunnel_instance/etc/systemd/system/ssh.socket.d/override.conf' :   'etc/systemd/system/ssh.socket.d/override.conf',
+
+    'tunnel_instance/tmp/tunnel_connector_wrapper.py'               :   'tmp/tunnel_connector_wrapper.py',
 
     'cloud_iac/aws/cloudformation/relay_server.yaml'                :   'relay_server.yaml',
     'cloud_iac/aws/cloudformation/sqs_and_lambda_command_pair.yaml' :   'sqs_and_lambda_command_pair.yaml',
