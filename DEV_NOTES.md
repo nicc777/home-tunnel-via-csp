@@ -109,10 +109,10 @@ cp -vf /tmp/cumulus_tunnel_standard_api_parameters.json $HOME/.cumulus_tunnel_st
 export RELAY_SERVER_NAME="test-relay"
 
 # Start a test relay server
-rm -vf $HOME/.cumulus_tunnel_state.sqlite &&                  \
-export S=$PWD && cd client/commander/src &&                   \
-python3 -m cumulus_tunnel_commander.cumulus_tunnel_commander  \
--v --run-once --identifier=$RELAY_SERVER_NAME                 \
+rm -vf $HOME/.cumulus_tunnel_state.sqlite &&                \
+export S=$PWD && cd client/relay-server-registration/src && \
+python3 -m relay_server_registration.main                   \
+-v --run-once --identifier=$RELAY_SERVER_NAME               \
 --cloud-profile-name=$AWS_PROFILE && cd $S
 
 # Get the latest password for SSH:
@@ -124,7 +124,7 @@ PAGER="" aws secretsmanager get-secret-value                          \
 # --OR-- to save the password in an environment variable:
 export RELAY_PW=$(PAGER="" aws secretsmanager get-secret-value --region $AWS_REGION --profile $AWS_PROFILE --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" --query SecretString --output text | jq -r ".password")
 
-# Het the instance ID:
+# Get the instance ID:
 export INSTANCE_ID=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" --query 'Reservations[*].Instances[*].InstanceId' --output text --region $AWS_REGION --profile $AWS_PROFILE`
 
 # Get the Instance IP Address
@@ -136,10 +136,13 @@ echo "<html><head><title>Simple Test</head></title><body><h3>It Works</h3></body
 podman run --name static-web-test -v /tmp/simple-static:/usr/share/nginx/html:ro -d -p 8999:80 docker.io/nginx:latest
 curl http://localhost:8999
 
+# Register the client that will access the relay
+export S=$PWD && cd client/client-registration/src && \
+python3 -m client_registration.main                   \
+-v --run-once --relay-id=$RELAY_SERVER_NAME && cd $S
+
 # SSH to the newly launched instance to test:
 ssh -p 2022 -R 0.0.0.0:8999:8999  rtu@$INSTANCE_IP_ADDR
-
-# NOTE - for now I still have to add manually my IP address to the SG....
 
 # In another terminal, test:
 curl http://$INSTANCE_IP_ADDR:8999
