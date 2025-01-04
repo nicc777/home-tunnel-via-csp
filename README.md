@@ -19,6 +19,7 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 | Date       | Status           | Notes                                                                                                                                                                                                              |
 |------------|:----------------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 2025-01-04 | Web Proxy        | Initial testing more or less work. Still some more testing required. Will also focus next on creating additional domain records mapping to the ALB.                                                                |
+|            | Tunnel Wrapper   | Started working on another wrapper for the SSH tunneling to manage tunnels to the relay server easier.                                                                                                             |
 | 2025-01-03 | Web Proxy        | Focusing on the web proxy next.                                                                                                                                                                                    |
 |            |                  | Adding rules to the ALB security group for clients to allow access to the Web Proxy.                                                                                                                               |
 | 2025-01-02 | More or less MVP | Functionally everything now works from a technical perspective. Will focus next on some documentation and then packaging of the various services to make this a more user friendly solution.                       |
@@ -36,10 +37,10 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
 > [!NOTE]  
 > This list is kinda variable as I adapt the implementation to my needs which changes as I discover things. It's a process of discovering how I want all this to work.
 
-* [X] Relay Server Agent
+* [X] Relay Server Registration Package
   * [ ] Python Package
   * [ ] Relay Server Admin UI (Web)
-* [X] Client Agent
+* [X] Client Registration Package
   * [ ] Python Package
   * [ ] Client Local Admin UI (Web)
 * [ ] Relay Server
@@ -49,6 +50,10 @@ Creating a custom solution similar to [NGrok](https://ngrok.com/our-product/secu
   * [X] Configuring the Reverse Proxy
   * [ ] Python Package
   * [ ] Admin Web UI
+* [ ] Resource Server Tunnel Wrapper (wraps SSH reverse tunnel command)
+  * [ ] Python Package
+  * [ ] Relay Server script and status integration
+  * [ ] Status lambda integration
 * [X] Deployment Script
 * [ ] API Commands
   * [X] Register Relay Server
