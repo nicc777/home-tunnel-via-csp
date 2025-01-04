@@ -644,7 +644,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="TS5O_DR4g2I4-OFOQc3-" name="Flow - Create Initial Stacks">
-    <mxGraphModel dx="683" dy="-702" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1195" dy="-404" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -772,7 +772,7 @@
         <mxCell id="G9_w0VYjKjPgdWeUHliM-23" value="Step 3" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=3;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;rotation=0;" parent="1" vertex="1">
           <mxGeometry x="80" y="2040" width="120" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="G9_w0VYjKjPgdWeUHliM-27" value="Distribute to Relay Server(S) and client machine(s)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="G9_w0VYjKjPgdWeUHliM-25" target="G9_w0VYjKjPgdWeUHliM-26" edge="1">
+        <mxCell id="G9_w0VYjKjPgdWeUHliM-27" value="Distribute to Relay Server(S) and client machine(s)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;dashed=1;" parent="1" source="G9_w0VYjKjPgdWeUHliM-25" target="G9_w0VYjKjPgdWeUHliM-26" edge="1">
           <mxGeometry x="-0.5001" y="10" relative="1" as="geometry">
             <mxPoint as="offset" />
           </mxGeometry>
