@@ -1,3 +1,8 @@
+"""
+Building on the earlier example from scripts/daemon-example.py but adding
+logging of all STDERR and STDOUT to file
+"""
+
 import os
 import sys
 import time
