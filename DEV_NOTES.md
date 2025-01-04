@@ -121,11 +121,14 @@ PAGER="" aws secretsmanager get-secret-value                          \
 --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" \
 --query SecretString --output text | jq -r ".password"
 
+# --OR-- to save the password in an environment variable:
+export RELAY_PW=$(PAGER="" aws secretsmanager get-secret-value --region $AWS_REGION --profile $AWS_PROFILE --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" --query SecretString --output text | jq -r ".password")
+
 # Het the instance ID:
 export INSTANCE_ID=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" --query 'Reservations[*].Instances[*].InstanceId' --output text --region $AWS_REGION --profile $AWS_PROFILE`
 
 # Get the Instance IP Address
-export INSTANCE_IP_ADDR=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" --output json --region $AWS_REGION --profile $AWS_PROFILE | jq -r '.Reservations[].Instances[].PublicIpAddress'`
+export INSTANCE_IP_ADDR=$(PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" "Name=instance-state-name,Values=running" --output json --region $AWS_REGION --profile $AWS_PROFILE | jq -r '.Reservations[].Instances[].PublicIpAddress')
 
 # Setup a simple test local web server
 mkdir /tmp/simple-static

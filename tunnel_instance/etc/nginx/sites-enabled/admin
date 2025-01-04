@@ -70,6 +70,20 @@ server {
         #}
 }
 
+server {
+        listen 80;
+        listen [::]:80;
+
+        server_name __DOMAIN__;
+
+        location / {
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_pass http://localhost:8080/;
+        }
+}
+
+
 # Virtual Host configuration for example.com
 #
 # You can move that to a different file under sites-available/ and symlink that
