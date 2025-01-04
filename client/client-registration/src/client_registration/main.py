@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 import requests
 import coloredlogs
-from cumulus_tunnel_agent.args import runtime_options
+from client_registration.args import runtime_options
 
 
 DEBUG = bool(int(os.getenv('DEBUG', '0')))

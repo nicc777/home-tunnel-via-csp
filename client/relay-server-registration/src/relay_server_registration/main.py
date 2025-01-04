@@ -12,8 +12,8 @@ from datetime import datetime, timedelta
 import requests
 import coloredlogs
 
-from cumulus_tunnel_commander.args import args, configs
-from cumulus_tunnel_commander.state import StateManagementFunctions
+from relay_server_registration.args import args, configs
+from relay_server_registration.state import StateManagementFunctions
 
 DEFAULT_TEMPLATE_TARGET_NAME_POSTFIX_MAPPING_PER_CLOUD_SP = {
     'aws': '-stack' # For AWS the DEFAULT_TEMPLATE_TARGET_NAME will be a CloudFormation stack name

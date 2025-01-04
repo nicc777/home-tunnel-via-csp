@@ -6,7 +6,7 @@ import json
 import copy
 from pathlib import Path
 
-from cumulus_tunnel_agent.state import StateManagementFunctions
+from client_registration.state import StateManagementFunctions
 
 
 DEFAULT_PORTS = "80,443"
