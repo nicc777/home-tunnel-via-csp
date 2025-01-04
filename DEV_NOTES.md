@@ -99,6 +99,8 @@ python3 build_and_deploy.py                         \
 --param_aws_route53_zone_id=$PARAM_ROUTE53_ZONE_ID  \
 --param_aws_acm_arn=$PARAM_ACM_ARN
 
+rm -vf $HOME/.cumulus_tunnel_state.sqlite
+
 python3 scripts/get_api_tokens.py
 
 cp -vf /tmp/cumulus_tunnel_api.json $HOME/.cumulus_tunnel_api.json
@@ -109,7 +111,6 @@ cp -vf /tmp/cumulus_tunnel_standard_api_parameters.json $HOME/.cumulus_tunnel_st
 export RELAY_SERVER_NAME="test-relay"
 
 # Start a test relay server
-rm -vf $HOME/.cumulus_tunnel_state.sqlite &&                \
 export S=$PWD && cd client/relay-server-registration/src && \
 python3 -m relay_server_registration.main                   \
 -v --run-once --identifier=$RELAY_SERVER_NAME               \
