@@ -143,10 +143,12 @@ python3 -m client_registration.main                   \
 -v --run-once --relay-id=$RELAY_SERVER_NAME && cd $S
 
 # SSH to the newly launched instance to test:
-ssh -p 2022 -R 0.0.0.0:8999:8999  rtu@$INSTANCE_IP_ADDR
+ssh -p 2022 -R 0.0.0.0:8080:127.0.0.1:8999  rtu@$INSTANCE_IP_ADDR
 
 # In another terminal, test:
-curl http://$INSTANCE_IP_ADDR:8999
+curl https://${RELAY_SERVER_NAME}-admin.${PARAM_DOMAIN_NAME}/
+
+curl https://${RELAY_SERVER_NAME}-admin.${PARAM_DOMAIN_NAME}:8081/
 ```
 
 # API Command Structures
