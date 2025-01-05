@@ -189,7 +189,7 @@ CloudProviders:
     - Name: SUBNET_2_ID
       Value: xxx
       EnvOverride: PARAM_SUBNET_2_ID
-    - Name: SUBNET_2_ID
+    - Name: SUBNET_3_ID
       Value: xxx
       EnvOverride: PARAM_SUBNET_3_ID
     - Name: AMI
