@@ -205,22 +205,22 @@ Domains:                # One or more domain zones can be defined here
     - ParameterName: AwsCertificateManagerCertificateARN
       ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
 ---  
-Relay:
-  Name: test-relay      # Identifier
+RelayServer:
+  Name: test-relay              # Identifier
   CloudProvider:
     Name: my-aws
   HttpProxy:
-    Enabled: true       # For AWS, provision the Load Balancer to the HTTP proxy
+    Enabled: true               # For AWS, provision the Load Balancer to the HTTP proxy
     Admin:
       Enabled: true
       Port: 8081
     ResourceLocalTarget:
-      Port: 8080        # When building a tunnel from the resource server, this is the port to target on the relay server
+      Port: 8080                # When building a tunnel from the resource server, this is the port to target on the relay server
     LinkedDomain:
       DomainName: example.tld
-  ApiConfig:            # Where the API configuration is stored.
+  ApiConfig:                    # Where the API configuration is stored.
     Path: ${home}/.cumulus_tunnel_api.json
-  CustomSetupScript:    # Will be included in the setup process, after the main setup script has run
+  CustomSetupScript:            # Will be included in the setup process, after the main setup script has run
     Path: /dev/null
   DomainProviders:
     Record:
@@ -241,19 +241,19 @@ Client:
     EnableRelayAccess: true
     EnableHttpProxyAccess: true
   Mode: run-once|interval   # Default: "interval" - will reconcile every "IntervalSeconds"
-  IntervalSeconds: 3600   # If mode is interval, the sleep time can be adjusted here...
-  ApiConfig:              # Where the API configuration is stored. Default is $HOME/.cumulus_tunnel_api.json
+  IntervalSeconds: 3600     # If mode is interval, the sleep time can be adjusted here...
+  ApiConfig:                # Where the API configuration is stored. Default is $HOME/.cumulus_tunnel_api.json
     Path: /home/user/.cumulus_tunnel_api.json
-  SkipNat: false          # If "true", won't attempt to automatically add NAT addresses
+  SkipNat: false            # If "true", won't attempt to automatically add NAT addresses
   SkipDefaultRelayPorts: false        # By default, ports to the relay will be added (2022)
   SkipDefaultLoadBalancerPorts: false # By default, ports to the load balancer will be added (80, 443, 8081)
-  IpAddresses:            # When "SkipNat" is "true", at least some IP addresses MUST be added
-    Relay:                # If "TargetRelays.[].EnableRelayAccess" is "true"
+  IpAddresses:              # When "SkipNat" is "true", at least some IP addresses MUST be added
+    Relay:                  # If "TargetRelays.[].EnableRelayAccess" is "true"
       IPv4:
       - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the relay-server
       IPv6:
       - string-with-ipv6-address
-    LoadBalancer:         # If "TargetRelays.[].EnableHttpProxyAccess" is "true"
+    HttpProxy:              # If "TargetRelays.[].EnableHttpProxyAccess" is "true"
       IPv4:
       - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the load balancer to the HTTP proxy
       IPv6:
