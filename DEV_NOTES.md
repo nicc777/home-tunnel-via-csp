@@ -176,7 +176,6 @@ CloudProviders:
     Type: aws
     Profile: default    # Assuming all cloud provider will had some concept of a profile and region
     Region: eu-central-1
-    # Below must be included on the system used to provision the initial infrastructure
     TargetApiConfiguration: # For API config distribution. Systems not on the network or not reachable at the provisioning time will be skipped
       LocalPath: /tmp/.cumulus_tunnel_api.json
       Distribution:
