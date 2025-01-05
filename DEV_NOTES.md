@@ -249,8 +249,14 @@ Client:
   SkipDefaultLoadBalancerPorts: false # By default, ports to the load balancer will be added (80, 443, 8081)
   IpAddresses:            # When "SkipNat" is "true", at least some IP addresses MUST be added
     Relay:                # If "TargetRelays.[].EnableRelayAccess" is "true"
-    - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the relay-server
+      IPv4:
+      - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the relay-server
+      IPv6:
+      - string-with-ipv6-address
     LoadBalancer:         # If "TargetRelays.[].EnableHttpProxyAccess" is "true"
-    - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the load balancer to the HTTP proxy
+      IPv4:
+      - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the load balancer to the HTTP proxy
+      IPv6:
+      - string-with-ipv6-address
 ```
 
