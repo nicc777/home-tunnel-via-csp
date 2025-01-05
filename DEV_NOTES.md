@@ -226,46 +226,50 @@ Domains:                # One or more domain zones can be defined here
 Something like this:
 
 ```yaml
+---
+Domains:                # One or more domain zones can be defined here
+  Provider:
+  - DomainName: example.tld
+    Config:             # Depends on the Domain Registrar - only AWS Route 53 supported right now
+    - ParameterName: ZoneId
+      ParameterValue: ABC123
+    - ParameterName: AwsCertificateManagerCertificateARN
+      ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
 ---  
 RelayServer:
   Name: test-relay              # Identifier
   HttpProxy:                    # Creates a Load Balancer that will set-up a connection via the relay-server Nginx instance
-    Admin:
-      Enabled: true             # Will also add the admin record to DNS and target group and Nginx reverse proxy on the relay server
-      Configuration:
-      - ParameterName: AdminPort  # Nginx Listening Port
-        ParameterValue: 8081
-      - ParameterName: ZoneId
-        ParameterValue: ABC123
-      - ParameterName: Domain
-        ParameterValue: example.tld   # Must be supported/configured on the target infrastructure - for AWS, this must be a Route 53 zone
-      - ParameterName: AwsCertificateManagerCertificateARN
-        ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
-      - ParameterName: RecordName
-        ParameterValue: test-relay-admin
     VirtualDomains:             # Nginx configurations
-    - Name: example.tld
+    - DomainName: example.tld
       Port: 80
-      LoadBalancer:
-      - ParameterName: ProxyTargetPort
-        ParameterValue: 80
-      - ParameterName: ZoneId
-        ParameterValue: ABC123
-      - ParameterName: Domain
-        ParameterValue: example.tld       # Must be supported/configured on the target infrastructure - for AWS, this must be a Route 53 zone
-      - ParameterName: AwsCertificateManagerCertificateARN
-        ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
-      ResourceLocalTarget:
-        Port: 8082              # When building a tunnel from the resource server, this is the port to target on the relay server
+      # At some future point, TLS and authentication configuration will also be added
+      IpProtocols:
+      - Type: IPv4
+        Interface: "0.0.0.0"
+      - Type: IPv6:
+        Interface: [::]
+      Headers:                  # Adds nginx "proxy_set_header" entries
+      - Name: Host
+        Value: "$host"
+      - Name: X-Real-IP
+        Value: "$remote_addr"
+      ProxyPass:
+        Host: localhost
+        Port: 8080              # When building a tunnel from the resource server, this is the port to target on the relay server
+        Protocol: http          # http|https
+      Ingress:                  # For AWS, this is the LoadBalancer configuration
+        Enable: true            # For AWS, this will provision a Target Group targeting this port and a listener bound to the DNS name
+        DnsRecordNames:         # For AWS, this will provision a listener with matches for any of the supplied record names, and it will also add the DNS records. Requires the "Domains" configuration section.
+        - name1                 # Traffic on name1.example.tld will be routed to the Load Balancer and forwarded to the target group that targets port 80 of the relay server
+        - name2
   ApiConfig:                    # Where the API configuration is stored.
     Path: /home/user/.cumulus_tunnel_api.json
   CustomSetupScript:            # Will be included in the setup process, after the main setup script has run
     Path: /dev/null
-  DomainProviders:
-    Record:
-    - DomainName: example.tld
-      RecordName: test1
-      Target: relay|load-balancer # Point the record either to the relay server IP address or the Load Balancer for the web proxy
+  DomainConfigurations:         # Requires a "Domains" configuration section in the YAML file
+  - DomainName: example.tld
+    Records:
+    - RecordName: ssh-test-relay  # This record will point to the public IP address of the Relay Server.
 ```
 
 ## Client Config
