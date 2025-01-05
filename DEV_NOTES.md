@@ -167,47 +167,57 @@ This is the server/system from where the infrastructure is provisioned:
 
 ```yaml
 ---
+# Trusted system is a static configuration of systems you trust on your network
+TrustedSystems:
+- Identifier: my-server
+  Type: resource-server
+  Hostname: my-server
+  Username: my-user
+  SshPrivateKey: /home/user/.ssh/some-key.pem
+  # A key is only needed for "resource-server" type systems
+  # This key must be passed as a parameter by the resource server to the relay server
+  # The relay server must match the key or else the tunnel will NOT be provisioned
+  Key: abcdefg
+- Identifier: my-laptop
+  Type: client
+  Hostname: my-laptop
+  Username: my-user
+  SshPrivateKey: /home/user/.ssh/some-key.pem
+  TargetPath: /home/user/.cumulus_tunnel_api.json
+---
 CloudProviders:
-  Provider:
-  - Name: my-aws        # Supported cloud provider. Only AWS for now.
-    Context:            # Some providers may only be for either "relay" or "domain" configuration    
-    - relay             
-    - domain
-    Type: aws
-    Profile: default    # Assuming all cloud provider will had some concept of a profile and region
-    Region: eu-central-1
-    TargetApiConfiguration: # For API config distribution. Systems not on the network or not reachable at the provisioning time will be skipped
-      LocalPath: /tmp/.cumulus_tunnel_api.json
-      Distribution:
-        ResourceServers:
-        - Hostname: my-server
-          Username: my-user
-          SshPrivateKey: /home/user/.ssh/some-key.pem
-          TargetPath: /home/user/.cumulus_tunnel_api.json
-        Clients:
-        - Hostname: my-laptop
-          Username: my-user
-          SshPrivateKey: /home/user/.ssh/some-key.pem
-          TargetPath: /home/user/.cumulus_tunnel_api.json
-    Configuration:      
-    - Name: VPC_ID
-      Value: xxx
-      EnvOverride: PARAM_VPC_ID
-    - Name: VPC_CIDR
-      Value: xxx
-      EnvOverride: PARAM_VPC_CIDR
-    - Name: SUBNET_1_ID
-      Value: xxx
-      EnvOverride: PARAM_SUBNET_1_ID
-    - Name: SUBNET_2_ID
-      Value: xxx
-      EnvOverride: PARAM_SUBNET_2_ID
-    - Name: SUBNET_3_ID
-      Value: xxx
-      EnvOverride: PARAM_SUBNET_3_ID
-    - Name: AMI
-      Value: xxx
-      EnvOverride: PARAM_AMI
+- Name: my-aws        # Supported cloud provider. Only AWS for now.
+  Context:            # Some providers may only be for either "relay" or "domain" configuration    
+  - relay             
+  - domain
+  Type: aws
+  Profile: default    # Assuming all cloud provider will had some concept of a profile and region
+  Region: eu-central-1
+  Configuration:                      # Common configuration parameters shared with all other tasks
+  - Name: VPC_ID                      # MAPS to ${CloudProviders::Configuration::VPC_ID}
+    Value: xxx                        # If this value is NOT supplied, at least the "EnvOverride" must be supplied
+    EnvOverride: PARAM_VPC_ID         # THe Environment variable name that can override this value.
+  - Name: VPC_CIDR                    # MAPS to ${CloudProviders::Configuration::VPC_CIDR}
+    Value: xxx
+    EnvOverride: PARAM_VPC_CIDR
+  - Name: SUBNET_1_ID
+    Value: xxx
+    EnvOverride: PARAM_SUBNET_1_ID
+  - Name: SUBNET_2_ID
+    Value: xxx
+    EnvOverride: PARAM_SUBNET_2_ID
+  - Name: SUBNET_3_ID
+    Value: xxx
+    EnvOverride: PARAM_SUBNET_3_ID
+  - Name: AMI
+    Value: xxx
+    EnvOverride: PARAM_AMI
+  - Name: ArtifactBucketNameParam
+    Value: xxx
+    EnvOverride: ARTIFACT_BUCKET_NAME
+  ArtifactTarget:                   # Map to global variable ${CloudProviders::ArtifactTarget} that will be a dict with the "type" and "name"
+    Type: s3-bucket
+    Name: s3-bucket-name
 ---
 Domains:                # One or more domain zones can be defined here
   Provider:
@@ -219,6 +229,115 @@ Domains:                # One or more domain zones can be defined here
       ParameterValue: ABC123
     - ParameterName: AwsCertificateManagerCertificateARN
       ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
+---
+GitRepositories:
+- Identifier: default-repo
+  Repository: https://github.com/nicc777/home-tunnel-via-csp
+  Revision: release-0.0.1
+  LocalWorkDir: /tmp/cumulus-tunnel
+  IfExistsStrategy: re-create # The only option right now - the "LocalWorkDir" will be deleted and created again and the repository source will be cloned again.
+  PostSuccessfulDeploymentCleanup: true # If no errors occurred during deployment, delete "LocalWorkDir"
+---:
+Artifacts:
+  DefaultSource: 
+    Type: git-repo 
+    Identifier: default-repo
+  Files:
+  - Identifier: sqs-and-lambda-command-pair-template
+    Path: cloud_iac/aws/cloudformation/sqs_and_lambda_command_pair.yaml # Relative in the repo directory structure
+    Source:
+      Type: git-repo          # Only "git-repo" and "dynamic" is supported for now
+      Identifier:  default-repo
+    ArtifactKey: cloudformation/sqs_and_lambda_command_pair.yaml
+  - Identifier: create-relay-server-lambda-function 
+    Path: cloud_iac/aws/lambda_functions/cmd_exec_create_relay_server.py  # Source not supplied, so use the DefaultSource
+    ArtifactKey: 
+  - Identifier: create-relay-server-lambda-function-zip
+    Path: /tmp/create-relay-server-lambda-function-zip/cmd_exec_create_relay_server.zip
+    Source:
+      Type: dynamic           # This is a file that does not exists but will be created as part of some processing/task
+    ArtifactKey: cmd_exec_create_relay_server.zip
+---
+Logging:
+  Level: debug
+  Handlers: 
+  - Name: coloredlogs   # Or a Python logger handler
+    LogFormat: "%(asctime)s -  %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"
+    InitParameters:     # Key and value pairs of the log handler class init parameters
+    - Name: level
+      Value: ${level}   # Will resolve the Log Level
+    - Name: fnt
+      Value: ${format}  # Will resolve the LogFormat
+---
+RelayHubs:
+- Name: my-first-relay-hub
+  CloudProvider: my-aws
+  SourceRepoIdentifier: default-repo
+  DeploymentSteps:
+  - StepWave: 1
+    Identifier: copy-static-artifacts
+    StepClassName: AwsTransferStaticArtifactsToS3Bucket
+    StepClassParameters:
+    - Name: files
+      Value:                                    # In this context, this is a LIST of DICT's
+      - Source: ${Artifacts::sqs-and-lambda-command-pair-template::Path}
+        Destination: ${Artifacts::sqs-and-lambda-command-pair-template::ArtifactKey}
+    - Name: target_s3_bucket
+      Value: ${CloudProviders::ArtifactTarget}  # Keep in mind this will be a DICT...
+  - StepWave: 2
+    Identifier: package-create-relay-server-lambda-function
+    StepClassName: AwsPackagePythonLambdaFunction
+    StepClassParameters:
+    - Name: source_lambda_function
+      Value: ${Artifacts::create-relay-server-lambda-function::Path}
+    - Name: output_zip_path
+      Value: ${Artifacts::create-relay-server-lambda-function-zip::Path}
+    - Name: artifact_bucket_name
+      Value: ${CloudProviders::ArtifactTarget}  # Keep in mind this will be a DICT...
+    - Name: artifact_key
+      Value: ${Artifacts::create-relay-server-lambda-function-zip::ArtifactKey}
+    - Name: python_requirements_file  # If supplied, the Python packages will be included in the ZIP archive. Link to Artifacts identifier
+      Value: null
+    - Name: python_requirements       # If supplied, the Python packages will be included in the ZIP archive. List of Python package names
+      Value: []
+  - StepWave: 3
+    Identifier: deploy-create-relay-server-lambda-function
+    StepClassName: AwsCloudFormationStackDeployment
+    StepClassParameters:
+    - Name: template_s3_source_bucket
+      Value: ${CloudProviders::ArtifactTarget}
+    - Name: template_key
+      Value: ${Artifacts::sqs-and-lambda-command-pair-template::ArtifactKey}
+    - Name: template_parameters       # CloudFOrmation stack parameters
+      Value:
+      - ParameterKey: ArtifactBucketNameParam
+        ParameterValue: ${CloudProviders::ArtifactTarget}
+      - ParameterKey: LambdaFunctionS3KeyParam
+        ParameterValue: ${Artifacts::create-relay-server-lambda-function-zip::ArtifactKey}
+      - ParameterKey: VpcId1Param
+        ParameterValue: ${CloudProviders::Configuration::VPC_ID}
+      - ParameterKey: VpcCidrParam
+        ParameterValue: ${CloudProviders::Configuration::VPC_CIDR}
+      - ParameterKey: SubnetId1Param
+        ParameterValue: ${CloudProviders::Configuration::SUBNET_1_ID}
+      - ParameterKey: SubnetId2Param
+        ParameterValue: ${CloudProviders::Configuration::SUBNET_2_ID}
+      - ParameterKey: SubnetId3Param
+        ParameterValue: ${CloudProviders::Configuration::SUBNET_3_ID}
+      - ParameterKey: DebugParam
+        ParameterValue: "1"
+      - ParameterKey: QueueNameParam
+        ParameterValue: cmd_exec_create_relay_server_queue
+      - ParameterKey: PythonHandlerParam
+        ParameterValue: cmd_exec_create_relay_server.handler
+      - ParameterKey: ApiCommandParam
+        ParameterValue: create_relay_server
+  HubApiConfiguration: # For API config distribution. Systems not on the network or not reachable at the provisioning time will be skipped
+    TemporaryLocalPath: /tmp/.cumulus_tunnel_api.json
+    TrusterSystemDistribution:
+    - Identifier: my-server
+    - Identifier: my-laptop
+    CleanupTemporaryLocalPathPostDeployment: true # Delete "TemporaryLocalPath" after distribution (default=true) - can be omitted
 ```
 
 ## Relay Server(s) Config
@@ -227,14 +346,15 @@ Something like this:
 
 ```yaml
 ---
+# This will be sent to the API as payload and assumes the remote handlers can handle the management of this domain.
 Domains:                # One or more domain zones can be defined here
   Provider:
   - DomainName: example.tld
     Config:             # Depends on the Domain Registrar - only AWS Route 53 supported right now
-    - ParameterName: ZoneId
-      ParameterValue: ABC123
-    - ParameterName: AwsCertificateManagerCertificateARN
-      ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
+    - Name: ZoneId
+      Value: ABC123
+    - Name: AwsCertificateManagerCertificateARN
+      Value: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
 ---  
 RelayServer:
   Name: test-relay              # Identifier
@@ -266,10 +386,33 @@ RelayServer:
     Path: /home/user/.cumulus_tunnel_api.json
   CustomSetupScript:            # Will be included in the setup process, after the main setup script has run
     Path: /dev/null
-  DomainConfigurations:         # Requires a "Domains" configuration section in the YAML file
+  AdditionalDomainConfigurations: # Requires a "Domains" configuration section in the YAML file
   - DomainName: example.tld
     Records:
     - RecordName: ssh-test-relay  # This record will point to the public IP address of the Relay Server.
+  TrustedResourceServer:
+  - Identifier: my-server
+```
+
+## Resource Server Config
+
+Some ideas for the configuration of the resource server
+
+```yaml
+---
+ResourceServerIdentity:
+  Identifier: my-server
+  SshPrivateKey: /home/user/.ssh/some-key.pem
+  Key: abcdefg
+---
+Tunnels:
+- Identifier: local-web-app
+  RelayServerHost: ssh-test-relay.example.tld
+  RelayPort: 8080
+  LocalHost: 127.0.0.1          # This could also be an IP address or resolvable host name of any system that is reachable from this host
+  LocalPort: 8999
+  ApiConfig:                    # Where the API configuration is stored. Used to update the tunnel status
+    Path: /home/user/.cumulus_tunnel_api.json
 ```
 
 ## Client Config
