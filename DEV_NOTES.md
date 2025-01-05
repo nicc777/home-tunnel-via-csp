@@ -161,9 +161,9 @@ In the future I want to move away from all the command line parameters and rathe
 
 These examples include some future feature evolution which is not yet supported.
 
-## Relay Server(s) Config
+## Build Server
 
-Something like this:
+This is the server/system from where the infrastructure is provisioned:
 
 ```yaml
 ---
@@ -219,20 +219,44 @@ Domains:                # One or more domain zones can be defined here
       ParameterValue: ABC123
     - ParameterName: AwsCertificateManagerCertificateARN
       ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
+```
+
+## Relay Server(s) Config
+
+Something like this:
+
+```yaml
 ---  
 RelayServer:
   Name: test-relay              # Identifier
-  CloudProvider:
-    Name: my-aws
-  HttpProxy:
-    Enabled: true               # For AWS, provision the Load Balancer to the HTTP proxy
+  HttpProxy:                    # Creates a Load Balancer that will set-up a connection via the relay-server Nginx instance
     Admin:
-      Enabled: true
-      Port: 8081
-    ResourceLocalTarget:
-      Port: 8080                # When building a tunnel from the resource server, this is the port to target on the relay server
-    LinkedDomain:
-      DomainName: example.tld
+      Enabled: true             # Will also add the admin record to DNS and target group and Nginx reverse proxy on the relay server
+      Configuration:
+      - ParameterName: AdminPort  # Nginx Listening Port
+        ParameterValue: 8081
+      - ParameterName: ZoneId
+        ParameterValue: ABC123
+      - ParameterName: Domain
+        ParameterValue: example.tld   # Must be supported/configured on the target infrastructure - for AWS, this must be a Route 53 zone
+      - ParameterName: AwsCertificateManagerCertificateARN
+        ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
+      - ParameterName: RecordName
+        ParameterValue: test-relay-admin
+    VirtualDomains:             # Nginx configurations
+    - Name: example.tld
+      Port: 80
+      LoadBalancer:
+      - ParameterName: ProxyTargetPort
+        ParameterValue: 80
+      - ParameterName: ZoneId
+        ParameterValue: ABC123
+      - ParameterName: Domain
+        ParameterValue: example.tld       # Must be supported/configured on the target infrastructure - for AWS, this must be a Route 53 zone
+      - ParameterName: AwsCertificateManagerCertificateARN
+        ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
+      ResourceLocalTarget:
+        Port: 8082              # When building a tunnel from the resource server, this is the port to target on the relay server
   ApiConfig:                    # Where the API configuration is stored.
     Path: /home/user/.cumulus_tunnel_api.json
   CustomSetupScript:            # Will be included in the setup process, after the main setup script has run
@@ -249,6 +273,7 @@ RelayServer:
 Something like this:
 
 ```yaml
+---
 Client:
   Name: my-laptop
   TargetRelays:
