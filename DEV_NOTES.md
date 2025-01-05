@@ -243,7 +243,7 @@ Client:
   Mode: run-once|interval   # Default: "interval" - will reconcile every "IntervalSeconds"
   IntervalSeconds: 3600   # If mode is interval, the sleep time can be adjusted here...
   ApiConfig:              # Where the API configuration is stored.
-    Path: ${home}/.cumulus_tunnel_api.json
+    Path: /home/user/.cumulus_tunnel_api.json
   SkipNat: false          # If "true", won't attempt to automatically add NAT addresses
   SkipDefaultRelayPorts: false        # By default, ports to the relay will be added (2022)
   SkipDefaultLoadBalancerPorts: false # By default, ports to the load balancer will be added (80, 443, 8081)
