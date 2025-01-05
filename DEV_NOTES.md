@@ -176,7 +176,21 @@ CloudProviders:
     Type: aws
     Profile: default    # Assuming all cloud provider will had some concept of a profile and region
     Region: eu-central-1
-    Configuration:      # Must be included on the system used to provision the initial infrastructure
+    # Below must be included on the system used to provision the initial infrastructure
+    TargetApiConfiguration: # For API config distribution. Systems not on the network or not reachable at the provisioning time will be skipped
+      LocalPath: /tmp/.cumulus_tunnel_api.json
+      Distribution:
+        ResourceServers:
+        - Hostname: my-server
+          Username: my-user
+          SshPrivateKey: /home/user/.ssh/some-key.pem
+          TargetPath: /home/user/.cumulus_tunnel_api.json
+        Clients:
+        - Hostname: my-laptop
+          Username: my-user
+          SshPrivateKey: /home/user/.ssh/some-key.pem
+          TargetPath: /home/user/.cumulus_tunnel_api.json
+    Configuration:      
     - Name: VPC_ID
       Value: xxx
       EnvOverride: PARAM_VPC_ID
@@ -221,7 +235,7 @@ RelayServer:
     LinkedDomain:
       DomainName: example.tld
   ApiConfig:                    # Where the API configuration is stored.
-    Path: ${home}/.cumulus_tunnel_api.json
+    Path: /home/user/.cumulus_tunnel_api.json
   CustomSetupScript:            # Will be included in the setup process, after the main setup script has run
     Path: /dev/null
   DomainProviders:
