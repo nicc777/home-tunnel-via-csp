@@ -302,7 +302,7 @@ RelayHubs:
       Value: []
   - StepWave: 3
     Identifier: deploy-create-relay-server-lambda-function
-    StepClassName: AwsCloudFormationStackDeployment
+    StepClassName: AwsServerlessFunctionWithSqsDeployment
     StepClassParameters:
     - Name: template_s3_source_bucket
       Value: ${CloudProviders::ArtifactTarget}
@@ -333,11 +333,44 @@ RelayHubs:
       - ParameterKey: ApiCommandParam
         ParameterValue: create_relay_server
   HubApiConfiguration: # For API config distribution. Systems not on the network or not reachable at the provisioning time will be skipped
-    TemporaryLocalPath: /tmp/.cumulus_tunnel_api.json
-    TrusterSystemDistribution:
-    - Identifier: my-server
-    - Identifier: my-laptop
-    CleanupTemporaryLocalPathPostDeployment: true # Delete "TemporaryLocalPath" after distribution (default=true) - can be omitted
+    ConfigurationDistribution:
+      TemporaryLocalPath: /tmp/.cumulus_tunnel_api.json
+      TrusterSystemDistribution:
+      - Identifier: my-server
+      - Identifier: my-laptop
+      CleanupTemporaryLocalPathPostDeployment: true # Delete "TemporaryLocalPath" after distribution (default=true) - can be omitted
+  Webhooks:           # Web Hooks are called upon some events
+  - Identifier: my-web-hook
+    InvokeOnEvents:
+    - success
+    - error
+    Url:  http://localhost:1234/some-path
+    Method: POST
+    SkipVerifyTls: false  # Default is false. To NOT verify TLS certificate, set to true
+    ContentType: application/json
+    Headers:
+    - HeaderName: x-api-key
+      HeaderValue: abc123
+    QueryStringParameters:
+    - ParameterName: hub-type
+      ParameterValue: ${CloudProvider}
+      IncludeWithEvents:
+      - success
+      - error
+    BodyTemplates:
+      success: |
+        {
+          "HubName": ${Name},
+          "ApiConfig": ${HubApiConfiguration},
+          "StatusCode": ${status-code},
+          "SuccessMessage": ${message}
+        }
+      error: |
+        {
+          "HubName": ${Name},
+          "StatusCode": ${status-code},
+          "FailureMessage": ${message}
+        }
 ```
 
 ## Relay Server(s) Config
@@ -358,6 +391,20 @@ Domains:                # One or more domain zones can be defined here
 ---  
 RelayServer:
   Name: test-relay              # Identifier
+  Schedule:
+    Cycles:
+      MaxCycles: 4              # How long do we need this relay for, in "CycleUnit"s
+      CycleUnit: weeks          # hours,days,weeks,months,infinite
+      ImageRefresh:             # It is assumed that a serverless function will handle the instance refresh process. The function can read relay specific configs from existing CloudFormation template or DynamoDB (as an example)
+        RefreshSchedule:
+        - "0 04 * * 6"          # 0400 on Saturday mornings the VM Image will be updated
+        RefreshConfiguration:
+        - ParameterName: SqsQueueName     # Dependant on Cloud Provider. For AWS, we will target an SQS queue
+          ParameterValue: supply-a-name
+    ScaleUpSchedule:
+    - "0 6 * * 1,2,3,4,5"       # Start at 0600 every morning (UTC, or dependant on Cloud Service Provider Event Config)
+    ScaleDownSchedule:
+    - "0 20 * * 1,2,3,4,5"      # Stop relay server every evening at 2000 (UTC, or dependant on Cloud Service Provider Event Config)
   HttpProxy:                    # Creates a Load Balancer that will set-up a connection via the relay-server Nginx instance
     VirtualDomains:             # Nginx configurations
     - DomainName: example.tld
@@ -423,27 +470,28 @@ Something like this:
 ---
 Client:
   Name: my-laptop
+  Mode: run-once|interval   # Default: "interval" - will reconcile every "IntervalSeconds"
+  IntervalSeconds: 3600     # If mode is interval, the sleep time can be adjusted here...
   TargetRelays:
   - Name: test-relay
     EnableRelayAccess: true
     EnableHttpProxyAccess: true
-  Mode: run-once|interval   # Default: "interval" - will reconcile every "IntervalSeconds"
-  IntervalSeconds: 3600     # If mode is interval, the sleep time can be adjusted here...
-  ApiConfig:                # Where the API configuration is stored. Default is $HOME/.cumulus_tunnel_api.json
-    Path: /home/user/.cumulus_tunnel_api.json
-  SkipNat: false            # If "true", won't attempt to automatically add NAT addresses
-  SkipDefaultRelayPorts: false        # By default, ports to the relay will be added (2022)
-  SkipDefaultLoadBalancerPorts: false # By default, ports to the load balancer will be added (80, 443, 8081)
-  IpAddresses:              # When "SkipNat" is "true", at least some IP addresses MUST be added
-    Relay:                  # If "TargetRelays.[].EnableRelayAccess" is "true"
-      IPv4:
-      - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the relay-server
-      IPv6:
-      - string-with-ipv6-address
-    HttpProxy:              # If "TargetRelays.[].EnableHttpProxyAccess" is "true"
-      IPv4:
-      - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the load balancer to the HTTP proxy
-      IPv6:
-      - string-with-ipv6-address
+    RelayConfiguration:
+      ApiConfig:                # Where the API configuration is stored. Default is $HOME/.cumulus_tunnel_api.json
+        Path: /home/user/.cumulus_tunnel_api.json
+      SkipNat: false            # If "true", won't attempt to automatically add NAT addresses
+      SkipDefaultRelayPorts: false        # By default, ports to the relay will be added (2022)
+      SkipDefaultLoadBalancerPorts: false # By default, ports to the load balancer will be added (80, 443, 8081)
+      IpAddresses:              # When "SkipNat" is "true", at least some IP addresses MUST be added
+        Relay:                  # If "TargetRelays.[].EnableRelayAccess" is "true"
+          IPv4:
+          - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the relay-server
+          IPv6:
+          - string-with-ipv6-address
+        HttpProxy:              # If "TargetRelays.[].EnableHttpProxyAccess" is "true"
+          IPv4:
+          - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the load balancer to the HTTP proxy
+          IPv6:
+          - string-with-ipv6-address
 ```
 

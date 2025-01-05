@@ -1,4 +1,4 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.3 Chrome/130.0.6723.137 Electron/33.2.1 Safari/537.36" version="26.0.3" pages="5">
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.3 Chrome/130.0.6723.137 Electron/33.2.1 Safari/537.36" version="26.0.3" pages="6">
   <diagram name="Initial Idea" id="5lIAYbUVGujzU3PBdtjW">
     <mxGraphModel dx="1434" dy="835" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
@@ -644,7 +644,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="TS5O_DR4g2I4-OFOQc3-" name="Flow - Create Initial Stacks">
-    <mxGraphModel dx="1195" dy="-404" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1434" dy="835" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -904,6 +904,65 @@
               <mxPoint x="560" y="1880" />
             </Array>
           </mxGeometry>
+        </mxCell>
+        <mxCell id="WFPvEoeTxNV3PDnSkgfF-1" value="As on Release 0.0.1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1080" width="1160" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="R8tHKq3e9Mk45Tg6Shqa" name="Major Components">
+    <mxGraphModel dx="1839" dy="576" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="23ztym4zm9M9r2afzJLy-1" value="Common Code" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="160" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-2" value="Cloud Provider Implementations&lt;div&gt;(Per Cloud Provider - for now only AWS)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="160" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-3" value="Relay Hub&lt;div&gt;(Cloud Infrastructure to Support Relay Servers)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="360" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-4" value="&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;* YAML Parser for Configs&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;* Config Classes&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;* Git Repo Functions&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;* Base Classes for Cloud Servier Providers&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;* API Interactions&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;* Logging&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;* Webhook Parsing and calls&lt;/span&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="200" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-7" value="&lt;font color=&quot;#000000&quot;&gt;* AWS classes&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Serverless Functions (AWS Lambda Functions)&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* API Serverless Functions&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* CloudFormation Templates&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="280" y="200" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-8" value="&lt;font color=&quot;#000000&quot;&gt;* Step Logic and Coordination&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Loading appropriate Cloud Classes&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Executing and Tracking Deployments&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="400" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-9" value="Relay Server Manager" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="560" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-10" value="&lt;font color=&quot;#000000&quot;&gt;* Create/Delete Relay Server via API Call to Hub&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Status Update (via API calls to the Hub)&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="280" y="600" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-11" value="Resource Server Manager" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="560" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-12" value="&lt;font color=&quot;#000000&quot;&gt;* SSH Wrapper&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Create/Close Reverse Tunnels&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Status Updates via Hub API&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="600" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-13" value="Relay Server Resources&lt;div&gt;(Cloud Specific Resources)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="360" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-14" value="&lt;font color=&quot;#000000&quot;&gt;* CloudFormation Templates&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Cloud Init Scripts&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Various modified configuration files&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* SSH End Point Script for Tunnels&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="280" y="400" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-15" value="Client Agent" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="760" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-16" value="&lt;font color=&quot;#000000&quot;&gt;* Provision Relay Server via API Call to Hub&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Status Update (via API calls to the Hub)&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="-40" y="800" width="280" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-17" value="Common Lambda Function Package" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="760" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="23ztym4zm9M9r2afzJLy-18" value="&lt;font color=&quot;#000000&quot;&gt;* Logging&lt;/font&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* Synchronous Response Classes&amp;nbsp;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* DynamoDB&amp;nbsp;&lt;/font&gt;&lt;span style=&quot;color: rgb(0, 0, 0); background-color: transparent;&quot;&gt;Helper Classes/Functions&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* CloudFormation Helper Classes/Functions&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#000000&quot;&gt;* SQS Helper Classes/Functions&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;spacingRight=5;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="280" y="800" width="280" height="120" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
