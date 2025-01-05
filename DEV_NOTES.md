@@ -155,142 +155,102 @@ curl https://${RELAY_SERVER_NAME}-admin.${PARAM_DOMAIN_NAME}:8081/
 
 Python path on the relay server: `/usr/bin/python3`
 
-# API Command Structures
+# Configurations (concepts)
 
-## General Format
+In the future I want to move away from all the command line parameters and rather use config files only.
 
-Schema:
+## Relay Server(s) Config
 
-```json
-{
-  "command": "string",
-  "command_parameters": [
-    {
-      "parameter_name": "string",
-      "parameter_type": "string",
-      "parameter_value": "string"
-    }
-  ]
-}
+Something like this:
+
+```yaml
+---
+CloudProviders:
+  Provider:
+  - Name: my-aws        # Supported cloud provider. Only AWS for now.
+    Context:            # Some providers may only be for either "relay" or "domain" configuration    
+    - relay             
+    - domain
+    Type: aws
+    Profile: default    # Assuming all cloud provider will had some concept of a profile and region
+    Region: eu-central-1
+    Configuration:
+    - Name: VPC_ID
+      Value: xxx
+      EnvOverride: PARAM_VPC_ID
+    - Name: VPC_CIDR
+      Value: xxx
+      EnvOverride: PARAM_VPC_CIDR
+    - Name: SUBNET_1_ID
+      Value: xxx
+      EnvOverride: PARAM_SUBNET_1_ID
+    - Name: SUBNET_2_ID
+      Value: xxx
+      EnvOverride: PARAM_SUBNET_2_ID
+    - Name: SUBNET_2_ID
+      Value: xxx
+      EnvOverride: PARAM_SUBNET_3_ID
+    - Name: AMI
+      Value: xxx
+      EnvOverride: PARAM_AMI
+---
+Domains:                # One or more domain zones can be defined here
+  Provider:
+  - DomainName: example.tld
+    Provider:
+      Name: my-aws
+    Config:             # Depends on the Domain Registrar - only AWS Route 53 supported right now
+    - ParameterName: ZoneId
+      ParameterValue: ABC123
+    - ParameterName: AwsCertificateManagerCertificateARN
+      ParameterValue: arn:aws:acm:eu-central-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-xxxxxxxxxxxx
+---  
+Relay:
+  Name: test-relay      # Identifier
+  CloudProvider:
+    Name: my-aws
+  HttpProxy:
+    Enabled: true       # For AWS, provision the Load Balancer to the HTTP proxy
+    Admin:
+      Enabled: true
+      Port: 8081
+    ResourceLocalTarget:
+      Port: 8080        # When building a tunnel from the resource server, this is the port to target on the relay server
+    LinkedDomain:
+      DomainName: example.tld
+  ApiConfig:            # Where the API configuration is stored.
+    Path: ${home}/.cumulus_tunnel_api.json
+  CustomSetupScript:    # Will be included in the setup process, after the main setup script has run
+    Path: /dev/null
+  DomainProviders:
+    Record:
+    - DomainName: example.tld
+      RecordName: test1
+      Target: relay|load-balancer # Point the record either to the relay server IP address or the Load Balancer for the web proxy
 ```
 
-## Resource Server Commands
+## Client Config
 
-### Create a new Relay
+Something like this:
 
-Example:
-
-```json
-{
-  "command": "create_relay_server",
-  "command_parameters": [
-    {
-      "parameter_name": "ArtifactBucketNameParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "VpcId1Param",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "VpcCidrParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "SubnetId1Param",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "SubnetId2Param",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "SubnetId3Param",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "DebugParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "CumulusTunnelAmiIdParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "DefaultRoute53ZoneIdParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "DefaultRoute53DomainParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "ManagementDomainRecordParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "DomainCertificateArnParam",
-      "parameter_type": "str",
-      "parameter_value": "..."
-    },
-    {
-      "parameter_name": "Ec2InstanceTypeParam",
-      "parameter_type": "str",
-      "parameter_value": "t4g.nano"
-    },
-    {
-      "parameter_name": "RelayServerTtlHoursParam",
-      "parameter_type": "str",
-      "parameter_value": "12"
-    }
-  ]
-}
-```
-
-### Delete an Existing Relay
-
-Example:
-
-```json
-{
-  "command": "delete_relay_server_stack",
-  "command_parameters": [
-    {
-      "parameter_name": "stack_name",
-      "parameter_type": "str",
-      "parameter_value": "...."
-    }
-  ]
-}
-```
-
-## Agent Commands
-
-### Register a new agent
-
-Example:
-
-```json
-{
-  "command": "string",
-  "command_parameters": [
-    {
-      "parameter_name": "string",
-      "parameter_type": "string",
-      "parameter_value": "string"
-    }
-  ]
-}
+```yaml
+Client:
+  Name: my-laptop
+  TargetRelays:
+  - Name: test-relay
+    EnableRelayAccess: true
+    EnableHttpProxyAccess: true
+  Mode: run-once|interval   # Default: "interval" - will reconcile every "IntervalSeconds"
+  IntervalSeconds: 3600   # If mode is interval, the sleep time can be adjusted here...
+  ApiConfig:              # Where the API configuration is stored.
+    Path: ${home}/.cumulus_tunnel_api.json
+  SkipNat: false          # If "true", won't attempt to automatically add NAT addresses
+  SkipDefaultRelayPorts: false        # By default, ports to the relay will be added (2022)
+  SkipDefaultLoadBalancerPorts: false # By default, ports to the load balancer will be added (80, 443, 8081)
+  IpAddresses:            # When "SkipNat" is "true", at least some IP addresses MUST be added
+    Relay:                # If "TargetRelays.[].EnableRelayAccess" is "true"
+    - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the relay-server
+    LoadBalancer:         # If "TargetRelays.[].EnableHttpProxyAccess" is "true"
+    - 123.123.123.123/32  # Additional IP addresses to add to the security groups / firewall for the load balancer to the HTTP proxy
 ```
 
