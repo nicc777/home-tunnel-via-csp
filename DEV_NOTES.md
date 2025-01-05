@@ -176,7 +176,7 @@ CloudProviders:
     Type: aws
     Profile: default    # Assuming all cloud provider will had some concept of a profile and region
     Region: eu-central-1
-    Configuration:
+    Configuration:      # Must be included on the system used to provision the initial infrastructure
     - Name: VPC_ID
       Value: xxx
       EnvOverride: PARAM_VPC_ID
