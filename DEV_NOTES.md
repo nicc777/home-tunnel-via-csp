@@ -159,6 +159,8 @@ Python path on the relay server: `/usr/bin/python3`
 
 In the future I want to move away from all the command line parameters and rather use config files only.
 
+These examples include some future feature evolution which is not yet supported.
+
 ## Relay Server(s) Config
 
 Something like this:
