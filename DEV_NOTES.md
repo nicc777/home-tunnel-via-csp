@@ -116,19 +116,9 @@ python3 -m relay_server_registration.main                   \
 -v --run-once --identifier=$RELAY_SERVER_NAME               \
 --cloud-profile-name=$AWS_PROFILE && cd $S
 
-# Get the latest password for SSH:
-PAGER="" aws secretsmanager get-secret-value                          \
---region $AWS_REGION --profile $AWS_PROFILE                           \
---secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" \
---query SecretString --output text | jq -r ".password"
-
-# --OR-- to save the password in an environment variable:
-export RELAY_PW=$(PAGER="" aws secretsmanager get-secret-value --region $AWS_REGION --profile $AWS_PROFILE --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" --query SecretString --output text | jq -r ".password")
-
-# Get the instance ID:
+# Get the instance ID and get the Instance IP Address
 export INSTANCE_ID=`PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" --query 'Reservations[*].Instances[*].InstanceId' --output text --region $AWS_REGION --profile $AWS_PROFILE`
 
-# Get the Instance IP Address
 export INSTANCE_IP_ADDR=$(PAGER="" aws ec2 describe-instances --filters "Name=tag:Name,Values=${RELAY_SERVER_NAME}-admin" "Name=instance-state-name,Values=running" --output json --region $AWS_REGION --profile $AWS_PROFILE | jq -r '.Reservations[].Instances[].PublicIpAddress')
 
 # Setup a simple test local web server
@@ -141,6 +131,15 @@ curl http://localhost:8999
 export S=$PWD && cd client/client-registration/src && \
 python3 -m client_registration.main                   \
 -v --run-once --relay-id=$RELAY_SERVER_NAME && cd $S
+
+# Get the latest password for SSH:
+PAGER="" aws secretsmanager get-secret-value                          \
+--region $AWS_REGION --profile $AWS_PROFILE                           \
+--secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" \
+--query SecretString --output text | jq -r ".password"
+
+# --OR-- to save the password in an environment variable:
+export RELAY_PW=$(PAGER="" aws secretsmanager get-secret-value --region $AWS_REGION --profile $AWS_PROFILE --secret-id "cumulus-tunnel-api-resources-stack-tunnel-http-password" --query SecretString --output text | jq -r ".password")
 
 # SSH to the newly launched instance to test:
 ssh -p 2022 -R 0.0.0.0:8080:127.0.0.1:8999  rtu@$INSTANCE_IP_ADDR
