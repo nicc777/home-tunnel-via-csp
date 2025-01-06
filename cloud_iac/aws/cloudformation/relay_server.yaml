@@ -159,6 +159,7 @@ Resources:
 
   RelayServerSgIpv4Port80Ingress:
     Type: AWS::EC2::SecurityGroupIngress
+    Condition: CreateProxyCondition
     Properties:
       IpProtocol: tcp
       FromPort: 80
@@ -171,6 +172,7 @@ Resources:
 
   RelayServerSgIpv4Port8081Ingress:
     Type: AWS::EC2::SecurityGroupIngress
+    Condition: CreateProxyCondition
     Properties:
       IpProtocol: tcp
       FromPort: 8081
@@ -203,6 +205,7 @@ Resources:
 
   RelayServerAlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: CreateProxyCondition
     Properties:
       GroupDescription: Security group for the EC2 Instance hosting the tunnels
       VpcId: !Ref VpcId1Param
@@ -210,6 +213,7 @@ Resources:
 
   RelayServerAlbSgIpv4Egress:
     Type: AWS::EC2::SecurityGroupEgress
+    Condition: CreateProxyCondition
     Properties:
       CidrIp: 0.0.0.0/0
       GroupId: !GetAtt RelayServerAlbSecurityGroup.GroupId
@@ -217,6 +221,7 @@ Resources:
 
   RelayServerAlbSgIpv6Egress:
     Type: AWS::EC2::SecurityGroupEgress
+    Condition: CreateProxyCondition
     Properties:
       CidrIpv6: "::/0"
       GroupId: !GetAtt RelayServerAlbSecurityGroup.GroupId
@@ -425,6 +430,7 @@ Resources:
 
   RelayServerHttpTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Condition: CreateProxyCondition
     Properties:
       Name: !Sub '${ManagementDomainRecordParam}-http-tg'
       TargetType: 'instance'
@@ -445,6 +451,7 @@ Resources:
 
   RelayServerAdminTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Condition: CreateProxyCondition
     Properties:
       Name: !Sub '${ManagementDomainRecordParam}-admin-tg'
       TargetType: 'instance'
@@ -465,6 +472,7 @@ Resources:
 
   RelayServerAlb:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Condition: CreateProxyCondition
     Properties:
       Name: !Sub '${ManagementDomainRecordParam}-alb'
       Type: 'application'
@@ -486,6 +494,7 @@ Resources:
 
   RelayServerListener80:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: CreateProxyCondition
     Properties:
       Protocol: 'HTTP'
       Port: 80
@@ -502,6 +511,7 @@ Resources:
 
   RelayServerListener443:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: CreateProxyCondition
     DependsOn: 
     - RelayServerHttpTargetGroup
     - RelayServerAutoscalingGroupWithProxy
@@ -521,6 +531,7 @@ Resources:
 
   RelayServerListener8081:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: CreateProxyCondition
     DependsOn: 
     - RelayServerAutoscalingGroupWithProxy
     - RelayServerAdminTargetGroup
@@ -540,6 +551,7 @@ Resources:
 
   RelayServerAdminDnsRecordSet:
     Type: 'AWS::Route53::RecordSet'
+    Condition: CreateProxyCondition
     Properties:
       HostedZoneId: !Ref DefaultRoute53ZoneIdParam
       Type: 'A'
