@@ -4,17 +4,23 @@ echo "MAIN SETUP START"
 
 echo "SQS Queue URL set to ${SQS_URL}"
 
-apt install -y nginx net-tools socat python3 python3-venv python3-boto3 python3-flask python3-fastapi
+apt install -y net-tools socat python3 python3-venv python3-boto3 python3-flask python3-fastapi
 sleep 5
 
 # NGINX
-systemctl stop nginx
-rm -vf /etc/nginx/sites-enabled/default
-aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/nginx/sites-enabled/admin /etc/nginx/sites-enabled/admin
-aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/nginx/nginx.conf /etc/nginx/nginx.conf
-aws s3 cp s3://$ARTIFACT_BUCKET_NAME/var/www/html/index.html /var/www/html/index.html
-sed -i -e "s/__DOMAIN__/${DOMAIN_NAME}/g" /etc/nginx/sites-enabled/admin
-systemctl start nginx
+if [[ "$PROVISION_PROXY" == "1" ]]; then
+    echo "Provisioning HTTP Proxy via Nginx"
+    apt install -y nginx
+    sleep 5
+    systemctl stop nginx
+    rm -vf /etc/nginx/sites-enabled/default
+    aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/nginx/sites-enabled/admin /etc/nginx/sites-enabled/admin
+    aws s3 cp s3://$ARTIFACT_BUCKET_NAME/etc/nginx/nginx.conf /etc/nginx/nginx.conf
+    aws s3 cp s3://$ARTIFACT_BUCKET_NAME/var/www/html/index.html /var/www/html/index.html
+    sed -i -e "s/__DOMAIN__/${DOMAIN_NAME}/g" /etc/nginx/sites-enabled/admin
+    systemctl start nginx
+fi
+
 
 # SSH
 mkdir -p /etc/systemd/system/ssh.socket.d/
