@@ -6,6 +6,7 @@
         "boto",
         "botocore",
         "casefold",
+        "Coetzee",
         "coloredlogs",
         "dnsname",
         "doseq",
