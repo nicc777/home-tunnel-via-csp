@@ -78,6 +78,27 @@ Parameters:
     Description: 'The time in hours for the relay server to remain active. Try to keep this a low number (less than 168 or 1 week)'
     Default: '12'
 
+  ProvisionHttpProxyParam:
+    Type: 'String'
+    Description: 'If set to 1, the ALB will be created. If set to 0, no ALB will be created'
+    AllowedValues:
+    - '1'
+    - '0'
+    Default: '1'
+
+
+#######################################################################################################################
+###
+###     CONDITIONS
+###
+#######################################################################################################################
+
+
+Conditions:
+  CreateProxyCondition: !Equals [ !Ref ProvisionHttpProxyParam, '1' ]
+  NoCreateProxyCondition: !Equals [ !Ref ProvisionHttpProxyParam, '0' ]
+
+
 
 #######################################################################################################################
 ###
@@ -357,8 +378,9 @@ Resources:
   ###
   ########################################
 
-  RelayServerAutoscalingGroup:
+  RelayServerAutoscalingGroupWithProxy:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Condition: CreateProxyCondition
     Properties: 
       AutoScalingGroupName: !Sub '${AWS::StackName}-AutoScalingGroup'
       LaunchTemplate: 
@@ -378,6 +400,26 @@ Resources:
       TargetGroupARNs:
       - !Ref RelayServerHttpTargetGroup
       - !Ref RelayServerAdminTargetGroup
+
+  RelayServerAutoscalingGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Condition: NoCreateProxyCondition
+    Properties: 
+      AutoScalingGroupName: !Sub '${AWS::StackName}-AutoScalingGroup'
+      LaunchTemplate: 
+        LaunchTemplateId: !Ref RelayServerLaunchTemplate
+        Version: !GetAtt RelayServerLaunchTemplate.DefaultVersionNumber
+      DesiredCapacity: '1'
+      MinSize: '1'
+      MaxSize: '1'
+      VPCZoneIdentifier:
+      - !Ref SubnetId1Param
+      - !Ref SubnetId2Param
+      - !Ref SubnetId3Param
+      Tags:
+      - Key: 'Name'
+        Value: !Ref ManagementDomainRecordParam
+        PropagateAtLaunch: true
 
   RelayServerHttpTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
@@ -460,7 +502,7 @@ Resources:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     DependsOn: 
     - RelayServerHttpTargetGroup
-    - RelayServerAutoscalingGroup
+    - RelayServerAutoscalingGroupWithProxy
     Properties:
       Protocol: 'HTTPS'
       Port: 443
@@ -478,7 +520,7 @@ Resources:
   RelayServerListener8081:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     DependsOn: 
-    - RelayServerAutoscalingGroup
+    - RelayServerAutoscalingGroupWithProxy
     - RelayServerAdminTargetGroup
     Properties:
       Protocol: 'HTTPS'
@@ -514,16 +556,19 @@ Resources:
 Outputs:
 
   RelayServerAutoscalingGroupName:
-    Value: !Ref RelayServerAutoscalingGroup
+    Condition: CreateProxyCondition
+    Value: !Ref RelayServerAutoscalingGroupWithProxy
     Export:
-      Name: 'RelayServerAutoscalingGroupName'
+      Name: !Sub '${ManagementDomainRecordParam}-asg-name' 
 
   RelayServerAlbDNSName:
+    Condition: CreateProxyCondition
     Value: !GetAtt  RelayServerAlb.DNSName
     Export:
       Name: !Sub '${ManagementDomainRecordParam}-alb-dnsname'
 
   RelayServerAlbCanonicalHostedZoneID:
+    Condition: CreateProxyCondition
     Value: !GetAtt  RelayServerAlb.CanonicalHostedZoneID
     Export:
       Name: !Sub '${ManagementDomainRecordParam}-alb-zoneid'

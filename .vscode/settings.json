@@ -37,9 +37,12 @@
         "!GetAtt scaler",
         "!Join scaler",
         "!ImportValue scalar",
+        "!Equals scalar",
+        "!Equals sequence",
         "!GetAtt",
         "!Sub",
         "!Join",
-        "!ImportValue"
+        "!ImportValue",
+        "!Equals"
     ]
 }
